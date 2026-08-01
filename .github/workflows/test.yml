@@ -152,20 +152,6 @@ jobs:
           echo "View full results: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Send email report
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "DailyCommit Weekly Test Report - ${{ needs.test.result }}"
-          to: asifarefinbonny18@gmail.com
-          from: DailyCommit Bot
-          body: ${{ steps.report.outputs.REPORT }}
-          content_type: text/plain
-          convert_markdown: true
-
       - name: Send Telegram notification
         if: always()
         run: |

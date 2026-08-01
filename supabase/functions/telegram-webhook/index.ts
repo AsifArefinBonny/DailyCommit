@@ -508,6 +508,105 @@ async function handleStats(chatId: number, userId: string) {
   await sendMessage(chatId, statsText);
 }
 
+async function handleSetTime(chatId: number, userId: string, text: string) {
+  // Parse: /settime 14:00 Asia/Dhaka
+  const parts = text.split(" ").filter(p => p.length > 0);
+
+  if (parts.length < 3) {
+    await sendMessage(
+      chatId,
+      `⏰ *Set Your Daily Notification Time*\n\n` +
+      `Usage: \`/settime HH:MM TIMEZONE\`\n\n` +
+      `Examples:\n` +
+      `• \`/settime 14:00 Asia/Dhaka\`\n` +
+      `• \`/settime 09:00 America/New_York\`\n` +
+      `• \`/settime 18:30 Europe/London\`\n\n` +
+      `[View all timezones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)`
+    );
+    return;
+  }
+
+  const time = parts[1]; // e.g., "14:00"
+  const timezone = parts[2]; // e.g., "Asia/Dhaka"
+
+  // Validate time format (HH:MM)
+  if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
+    await sendMessage(chatId, `❌ Invalid time format. Use HH:MM (e.g., 14:00)`);
+    return;
+  }
+
+  // Update user preferences
+  const { error } = await supabase
+    .from("app_user")
+    .update({
+      preferred_notification_time: time,
+      timezone: timezone,
+      notifications_enabled: true,
+    })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("Error updating notification settings:", error);
+    await sendMessage(chatId, `❌ Failed to save settings. Please try again.`);
+    return;
+  }
+
+  await sendMessage(
+    chatId,
+    `✅ *Notification time set!*\n\n` +
+    `🕐 Time: ${time}\n` +
+    `🌍 Timezone: ${timezone}\n\n` +
+    `You'll receive a daily reminder at this time.\n\n` +
+    `Use \`/notifications off\` to disable.`
+  );
+}
+
+async function handleNotifications(chatId: number, userId: string, text: string) {
+  const parts = text.toLowerCase().split(" ");
+  const command = parts[1]; // "on" or "off"
+
+  if (command !== "on" && command !== "off") {
+    await sendMessage(
+      chatId,
+      `🔔 *Notification Settings*\n\n` +
+      `Usage:\n` +
+      `• \`/notifications on\` - Enable daily reminders\n` +
+      `• \`/notifications off\` - Disable daily reminders\n\n` +
+      `Set your preferred time with \`/settime\``
+    );
+    return;
+  }
+
+  const enabled = command === "on";
+
+  const { error } = await supabase
+    .from("app_user")
+    .update({ notifications_enabled: enabled })
+    .eq("id", userId);
+
+  if (error) {
+    await sendMessage(chatId, `❌ Failed to update settings. Please try again.`);
+    return;
+  }
+
+  if (enabled) {
+    const { data: user } = await supabase
+      .from("app_user")
+      .select("preferred_notification_time, timezone")
+      .eq("id", userId)
+      .single();
+
+    await sendMessage(
+      chatId,
+      `✅ Notifications enabled!\n\n` +
+      `You'll receive daily reminders at ${user?.preferred_notification_time || '08:00'} ${user?.timezone || 'UTC'}\n\n` +
+      `Change time with \`/settime\``
+    );
+  } else {
+    await sendMessage(chatId, `🔕 Notifications disabled. You can still use /learn anytime!`);
+  }
+}
+
 // ============================================================================
 // Main Handler
 // ============================================================================
@@ -539,6 +638,10 @@ serve(async (req) => {
         await handleLearn(chat.id, user.id);
       } else if (text === "/stats") {
         await handleStats(chat.id, user.id);
+      } else if (text.startsWith("/settime")) {
+        await handleSetTime(chat.id, user.id, text);
+      } else if (text.startsWith("/notifications")) {
+        await handleNotifications(chat.id, user.id, text);
       }
 
       return new Response("OK", { status: 200 });

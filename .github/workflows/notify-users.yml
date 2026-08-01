@@ -1,0 +1,106 @@
+name: Send User Notifications
+
+on:
+  schedule:
+    # Run every hour to check for users needing notifications
+    - cron: '0 * * * *'
+  workflow_dispatch:  # Allow manual triggering for testing
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install supabase requests python-dateutil pytz
+
+      - name: Send notifications
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_SERVICE_KEY: ${{ secrets.DB_SERVICE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          python3 << 'PYTHON_SCRIPT'
+          import os
+          from datetime import datetime
+          import pytz
+          from supabase import create_client
+          import requests
+
+          # Initialize Supabase
+          supabase = create_client(
+              os.environ["DB_URL"],
+              os.environ["DB_SERVICE_KEY"]
+          )
+
+          TELEGRAM_API = f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}"
+
+          def send_telegram_message(chat_id: int, text: str):
+              """Send Telegram message to user"""
+              try:
+                  response = requests.post(
+                      f"{TELEGRAM_API}/sendMessage",
+                      json={
+                          "chat_id": chat_id,
+                          "text": text,
+                          "parse_mode": "Markdown"
+                      }
+                  )
+                  return response.json()
+              except Exception as e:
+                  print(f"Failed to send message to {chat_id}: {e}")
+                  return None
+
+          # Get all users with notifications enabled
+          response = supabase.table("app_user").select("*").eq("notifications_enabled", True).execute()
+          users = response.data
+
+          print(f"Found {len(users)} users with notifications enabled")
+
+          # Current UTC time
+          now_utc = datetime.now(pytz.UTC)
+          
+          notified_count = 0
+
+          for user in users:
+              try:
+                  # Get user's timezone and preferred time
+                  user_tz = pytz.timezone(user.get("timezone", "UTC"))
+                  user_time = now_utc.astimezone(user_tz)
+                  
+                  # Parse preferred notification time (e.g., "14:00:00")
+                  preferred_time_str = user.get("preferred_notification_time", "08:00:00")
+                  preferred_hour = int(preferred_time_str.split(":")[0])
+                  preferred_minute = int(preferred_time_str.split(":")[1])
+                  
+                  # Check if current time matches preferred time (within the hour)
+                  if user_time.hour == preferred_hour and user_time.minute < 10:
+                      # Send notification
+                      message = (
+                          "📚 *Daily Lesson Time!*\n\n"
+                          "Your daily QA lesson is ready.\n\n"
+                          "Send /learn to start practicing! 💪"
+                      )
+                      
+                      result = send_telegram_message(user["telegram_user_id"], message)
+                      
+                      if result:
+                          print(f"✅ Notified user {user['telegram_user_id']} at {user_time.strftime('%H:%M %Z')}")
+                          notified_count += 1
+                      else:
+                          print(f"❌ Failed to notify user {user['telegram_user_id']}")
+                  
+              except Exception as e:
+                  print(f"Error processing user {user.get('telegram_user_id')}: {e}")
+
+          print(f"\n📊 Summary: Notified {notified_count}/{len(users)} users")
+          PYTHON_SCRIPT
