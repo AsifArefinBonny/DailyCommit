@@ -1,0 +1,2 @@
+# Allow Telegram to call this function without authentication
+verify_jwt: false
