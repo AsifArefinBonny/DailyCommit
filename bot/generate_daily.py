@@ -15,7 +15,12 @@ import random
 
 def load_config():
     """Load topics.yaml configuration."""
-    with open("config/topics.yaml", "r") as f:
+    # Get the project root directory (parent of bot/)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+    config_path = os.path.join(project_root, "config", "topics.yaml")
+
+    with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
 
