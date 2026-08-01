@@ -33,14 +33,20 @@ class OpenRouterClient:
         Returns None if all models fail (after alerting admin).
         """
         models_to_try = [self.primary_model] + self.fallback_models
+        print(f"🔄 Trying {len(models_to_try)} models: {models_to_try}", flush=True)
 
         for model_id in models_to_try:
             try:
+                print(f"  → Trying model: {model_id}", flush=True)
                 result = self._try_model(model_id, prompt, response_model, system_prompt)
                 if result:
+                    print(f"  ✓ Success with {model_id}", flush=True)
                     return result
+                else:
+                    print(f"  ✗ Failed with {model_id} (returned None)", flush=True)
             except OpenRouterError as e:
                 # Already logged and notified inside _try_model
+                print(f"  ✗ Error with {model_id}: {str(e)}", flush=True)
                 continue
 
         # All models failed
