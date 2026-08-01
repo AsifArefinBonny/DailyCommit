@@ -105,30 +105,55 @@ Requirements:
 
 2. **{num_questions} grounded questions**:
    - Questions MUST be answerable by reading the passage (no external knowledge)
-   - Mix question types: MCQ, true/false, fill-in, predict-output, spot-the-bug, short-answer
-   - Include a concept_tag for spaced repetition (e.g., "boundary-value-analysis")
    - Each question has a clear explanation that deepens understanding
+   - Include a concept_tag for spaced repetition (e.g., "boundary-value-analysis")
 
-Output as JSON:
+CRITICAL: Question "type" field must be EXACTLY one of these values:
+- "mcq" (multiple choice with 4 options A/B/C/D)
+- "true_false" (boolean question)
+- "fill_in" (fill in the blank)
+- "predict_output" (predict code output)
+- "spot_the_bug" (find the error in code)
+- "short_answer" (brief text answer)
+- "scenario" (real-world scenario)
+
+Output VALID JSON ONLY (no markdown, no extra text):
 {{
-  "title": "...",
-  "body": "...(the passage, markdown)...",
+  "title": "Understanding {topic['name']}",
+  "body": "...passage text with examples...",
   "difficulty": 2,
   "questions": [
     {{
       "type": "mcq",
-      "prompt": "...",
-      "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
+      "prompt": "Based on the passage, which approach is best?",
+      "options": ["A. First option", "B. Second option", "C. Third option", "D. Fourth option"],
       "correct_answer": "A",
-      "explanation": "...",
-      "concept_tag": "...",
+      "explanation": "The passage states that...",
+      "concept_tag": "test-design",
       "difficulty": 2
     }},
-    ...
+    {{
+      "type": "true_false",
+      "prompt": "According to the passage, this statement is correct.",
+      "options": null,
+      "correct_answer": "true",
+      "explanation": "This is true because...",
+      "concept_tag": "test-strategy",
+      "difficulty": 2
+    }},
+    {{
+      "type": "fill_in",
+      "prompt": "The passage describes ____ as a key principle.",
+      "options": null,
+      "correct_answer": "boundary testing",
+      "explanation": "The passage explicitly mentions...",
+      "concept_tag": "test-techniques",
+      "difficulty": 2
+    }}
   ]
 }}
 
-Make it engaging, practical, and career-relevant for a QA engineer."""
+Return ONLY the JSON object. Make it engaging and career-relevant for a QA engineer."""
 
     return prompt
 
