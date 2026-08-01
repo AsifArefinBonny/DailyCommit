@@ -150,10 +150,10 @@ lesson:
 
 # OpenRouter LLM config
 llm:
-  primary_model: "deepseek/deepseek-chat-v3:free"
+  primary_model: "meta-llama/llama-3.1-8b-instruct:free"
   fallback_models:
-    - "meta-llama/llama-3.3-70b-instruct:free"
-    - "google/gemini-2.0-flash-001:free"
+    - "google/gemini-flash-1.5:free"
+    - "mistralai/mistral-7b-instruct:free"
   max_retries: 3
   timeout_seconds: 30
 
