@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DailyCommit — Learning Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 DailyCommit</h1>
+            <p class="subtitle">Daily micro-lessons in QA, DevOps, and coding</p>
+        </header>
+
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="current-streak">—</div>
+                <div class="stat-label">Current Streak</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="longest-streak">—</div>
+                <div class="stat-label">Longest Streak</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="level">—</div>
+                <div class="stat-label">Level</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="xp">—</div>
+                <div class="stat-label">Total XP</div>
+            </div>
+        </section>
+
+        <section class="activity-section">
+            <h2>Activity Heatmap</h2>
+            <div id="heatmap" class="heatmap">
+                <p class="placeholder">Loading...</p>
+            </div>
+        </section>
+
+        <section class="lessons-section">
+            <h2>Recent Lessons</h2>
+            <div id="recent-lessons" class="lessons-list">
+                <p class="placeholder">Loading...</p>
+            </div>
+        </section>
+
+        <footer>
+            <p>Powered by <a href="https://github.com/AsifArefinBonny/DailyCommit">DailyCommit</a></p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

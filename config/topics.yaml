@@ -1,0 +1,173 @@
+# =============================================================================
+# DailyCommit — Topics configuration (source of truth)
+# Synced to the DB on each run; this file controls weighting, subjects, etc.
+# =============================================================================
+
+# Topic list (weights control selection probability)
+topics:
+  # ---- QA & Testing ----
+  - slug: test-design
+    name: Test Design Techniques
+    category: qa
+    weight: 2.0
+    active: true
+
+  - slug: automation
+    name: Test Automation
+    category: qa
+    weight: 2.0
+    active: true
+
+  - slug: api-testing
+    name: API Testing
+    category: qa
+    weight: 1.5
+    active: true
+
+  - slug: performance
+    name: Performance Testing
+    category: qa
+    weight: 1.5
+    active: true
+
+  - slug: security-testing
+    name: Security Testing Basics
+    category: qa
+    weight: 1.5
+    active: true
+
+  # ---- Computer Science ----
+  - slug: data-structures
+    name: Data Structures
+    category: cs
+    weight: 1.5
+    active: true
+
+  - slug: algorithms
+    name: Algorithms
+    category: cs
+    weight: 1.5
+    active: true
+
+  - slug: databases
+    name: Databases & SQL
+    category: cs
+    weight: 1.5
+    active: true
+
+  # ---- Coding ----
+  - slug: python
+    name: Python
+    category: coding
+    weight: 1.5
+    active: true
+
+  - slug: javascript
+    name: JavaScript/TypeScript
+    category: coding
+    weight: 1.5
+    active: true
+
+  - slug: debugging
+    name: Debugging Techniques
+    category: coding
+    weight: 1.0
+    active: true
+
+  # ---- DevOps ----
+  - slug: ci-cd
+    name: CI/CD Pipelines
+    category: devops
+    weight: 1.5
+    active: true
+
+  - slug: docker
+    name: Docker & Containers
+    category: devops
+    weight: 1.0
+    active: true
+
+  - slug: monitoring
+    name: Monitoring & Observability
+    category: devops
+    weight: 1.0
+    active: true
+
+  # ---- AI & Agents ----
+  - slug: llms
+    name: Large Language Models
+    category: ai
+    weight: 1.5
+    active: true
+
+  - slug: agents
+    name: AI Agents & Tools
+    category: ai
+    weight: 1.0
+    active: true
+
+  # ---- Math ----
+  - slug: statistics
+    name: Statistics for Testing
+    category: math
+    weight: 1.0
+    active: true
+
+  - slug: probability
+    name: Probability
+    category: math
+    weight: 0.8
+    active: true
+
+  # ---- Science (CS Theory) ----
+  - slug: networking
+    name: Networking Fundamentals
+    category: science
+    weight: 1.0
+    active: true
+
+  - slug: os-concepts
+    name: Operating Systems
+    category: science
+    weight: 0.8
+    active: true
+
+# Question type distribution (percentages, must sum to 100)
+question_types:
+  mcq: 30
+  true_false: 15
+  fill_in: 15
+  predict_output: 15
+  spot_the_bug: 10
+  short_answer: 10
+  scenario: 5
+
+# Lesson settings
+lesson:
+  default_difficulty: 2  # 1..5
+  questions_per_lesson: 3
+  passage_length_target: 150  # words
+
+# OpenRouter LLM config
+llm:
+  primary_model: "deepseek/deepseek-chat-v3:free"
+  fallback_models:
+    - "meta-llama/llama-3.3-70b-instruct:free"
+    - "google/gemini-2.0-flash-001:free"
+  max_retries: 3
+  timeout_seconds: 30
+
+# On-demand lessons
+on_demand:
+  daily_cap: 5  # max extra lessons via /learn per day
+
+# Gamification
+xp:
+  correct_answer: 10
+  perfect_lesson: 30  # bonus for 100% correct
+  streak_milestone: 50  # every 7-day increment
+
+# Tutor follow-up prompts (used by Telegram webhook)
+tutor_prompts:
+  explain_simply: "Explain this concept as if I'm a beginner who's never seen it before."
+  senior_qa: "Explain how this applies in a real-world QA or production environment. What would a senior SDET consider?"

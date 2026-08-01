@@ -1,0 +1,225 @@
+"""
+Daily lesson generation job (GitHub Actions cron).
+Generates a read-first lesson, inserts to DB, sends to Telegram.
+"""
+import os
+import sys
+import yaml
+from datetime import date
+from db import SupabaseDB
+from openrouter import OpenRouterClient
+from models import Lesson, Question
+from telegram_notify import send_message, notify_admin
+import random
+
+
+def load_config():
+    """Load topics.yaml configuration."""
+    with open("config/topics.yaml", "r") as f:
+        return yaml.safe_load(f)
+
+
+def select_topic(db: SupabaseDB, config: dict) -> dict:
+    """Select a topic using weighted random selection."""
+    topics = config["topics"]
+    active_topics = [t for t in topics if t.get("active", True)]
+
+    if not active_topics:
+        notify_admin("Daily Lesson", "⚠️ No active topics",
+                   "No topics are marked active in config/topics.yaml", {})
+        return None
+
+    # Weighted random selection
+    weights = [t.get("weight", 1.0) for t in active_topics]
+    selected = random.choices(active_topics, weights=weights, k=1)[0]
+
+    # Sync topic to DB if needed
+    db.upsert("topic", {
+        "slug": selected["slug"],
+        "name": selected["name"],
+        "category": selected["category"],
+        "weight": selected.get("weight", 1.0),
+        "active": selected.get("active", True)
+    })
+
+    # Get topic ID from DB
+    topic_row = db.select("topic", filters={"slug": selected["slug"]})
+    if topic_row:
+        selected["id"] = topic_row[0]["id"]
+
+    return selected
+
+
+def generate_lesson_prompt(topic: dict, config: dict) -> str:
+    """Build the LLM prompt for lesson generation."""
+    lesson_settings = config.get("lesson", {})
+    passage_length = lesson_settings.get("passage_length_target", 150)
+    num_questions = lesson_settings.get("questions_per_lesson", 3)
+
+    prompt = f"""Generate a daily micro-lesson for software QA learning.
+
+Topic: {topic['name']} ({topic['category']})
+Target difficulty: 2/5 (intermediate beginner)
+
+Requirements:
+1. **READ-FIRST passage** (~{passage_length} words):
+   - A concrete, practical example or concept explanation
+   - Real-world context (production scenarios, common mistakes, etc.)
+   - Must contain ALL information needed to answer the questions
+
+2. **{num_questions} grounded questions**:
+   - Questions MUST be answerable by reading the passage (no external knowledge)
+   - Mix question types: MCQ, true/false, fill-in, predict-output, spot-the-bug, short-answer
+   - Include a concept_tag for spaced repetition (e.g., "boundary-value-analysis")
+   - Each question has a clear explanation that deepens understanding
+
+Output as JSON:
+{{
+  "title": "...",
+  "body": "...(the passage, markdown)...",
+  "difficulty": 2,
+  "questions": [
+    {{
+      "type": "mcq",
+      "prompt": "...",
+      "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
+      "correct_answer": "A",
+      "explanation": "...",
+      "concept_tag": "...",
+      "difficulty": 2
+    }},
+    ...
+  ]
+}}
+
+Make it engaging, practical, and career-relevant for a QA engineer."""
+
+    return prompt
+
+
+def save_lesson_to_db(db: SupabaseDB, lesson: Lesson, topic_id: str, lesson_date: date) -> str:
+    """Save lesson and questions to database. Returns lesson_id."""
+    # Insert lesson
+    lesson_data = {
+        "lesson_date": str(lesson_date),
+        "topic_id": topic_id,
+        "title": lesson.title,
+        "body": lesson.body,
+        "difficulty": lesson.difficulty,
+        "source": "ai"
+    }
+    lesson_result = db.insert("lesson", lesson_data)
+
+    if not lesson_result:
+        notify_admin("Daily Lesson", "❌ DB insert failed",
+                   "Failed to insert lesson into database", {"date": str(lesson_date)})
+        return None
+
+    lesson_id = lesson_result[0]["id"]
+
+    # Insert questions
+    for q in lesson.questions:
+        question_data = {
+            "lesson_id": lesson_id,
+            "type": q.type,
+            "prompt": q.prompt,
+            "options": q.options,
+            "correct_answer": q.correct_answer,
+            "explanation": q.explanation,
+            "concept_tag": q.concept_tag,
+            "difficulty": q.difficulty,
+            "meta": q.meta
+        }
+        db.insert("question", question_data)
+
+    return lesson_id
+
+
+def send_lesson_to_telegram(db: SupabaseDB, lesson_id: str):
+    """Send the lesson to the user via Telegram."""
+    # Get user
+    users = db.select("app_user")
+    if not users:
+        notify_admin("Daily Lesson", "⚠️ No users",
+                   "No users in app_user table", {})
+        return
+
+    user = users[0]  # Single user for now
+    chat_id = user["telegram_user_id"]
+
+    # Get lesson and questions
+    lesson_rows = db.select("lesson", filters={"id": lesson_id})
+    if not lesson_rows:
+        return
+
+    lesson = lesson_rows[0]
+    questions = db.select("question", filters={"lesson_id": lesson_id})
+
+    # Format message
+    message = f"📚 **{lesson['title']}**\n\n{lesson['body']}\n\n"
+    message += f"_{len(questions)} questions to follow..._"
+
+    # Send lesson
+    success = send_message(chat_id, message)
+
+    if not success:
+        notify_admin("Daily Lesson", "❌ Send failed",
+                   "Failed to send lesson to Telegram",
+                   {"lesson_id": lesson_id, "chat_id": chat_id})
+        return
+
+    # TODO: Send first question with inline keyboard
+    # This will be handled by the Telegram webhook in v2
+
+
+def main():
+    """Main entry point for daily lesson generation."""
+    try:
+        # Load config
+        config = load_config()
+
+        # Initialize services
+        db = SupabaseDB()
+        llm = OpenRouterClient(
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            primary_model=config["llm"]["primary_model"],
+            fallback_models=config["llm"]["fallback_models"],
+            max_retries=config["llm"]["max_retries"],
+            timeout=config["llm"]["timeout_seconds"]
+        )
+
+        # Select topic
+        topic = select_topic(db, config)
+        if not topic:
+            sys.exit(1)
+
+        # Generate lesson
+        prompt = generate_lesson_prompt(topic, config)
+        lesson = llm.generate(prompt, Lesson)
+
+        if not lesson:
+            notify_admin("Daily Lesson", "❌ Generation failed",
+                       "LLM failed to generate valid lesson after all retries",
+                       {"topic": topic["name"]})
+            sys.exit(1)
+
+        # Save to DB
+        lesson_id = save_lesson_to_db(db, lesson, topic.get("id"), date.today())
+        if not lesson_id:
+            sys.exit(1)
+
+        # Send to Telegram
+        send_lesson_to_telegram(db, lesson_id)
+
+        print(f"✅ Daily lesson generated and sent: {lesson.title}")
+
+    except Exception as e:
+        notify_admin("Daily Lesson", "❌ Unexpected error",
+                   str(e),
+                   {"traceback": str(e)[:500]},
+                   run_url=os.getenv("GITHUB_RUN_URL"))
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
