@@ -20,10 +20,10 @@ except Exception as e:
     raise
 
 try:
-    from google_ai import GoogleAIClient
-    print("✓ google_ai module imported", flush=True)
+    from groq_client import GroqClient
+    print("✓ groq_client module imported", flush=True)
 except Exception as e:
-    print(f"❌ Failed to import google_ai: {e}", flush=True)
+    print(f"❌ Failed to import groq_client: {e}", flush=True)
     raise
 
 try:
@@ -222,14 +222,14 @@ def main():
         db = SupabaseDB()
         print("✓ DB connected", flush=True)
 
-        print("🤖 Initializing Google AI client...", flush=True)
-        llm = GoogleAIClient(
-            api_key=os.getenv("GOOGLE_AI_API_KEY"),
+        print("🤖 Initializing Groq client...", flush=True)
+        llm = GroqClient(
+            api_key=os.getenv("GROQ_API_KEY"),
             model_name=config["llm"]["model_name"],
             max_retries=config["llm"]["max_retries"],
             timeout=config["llm"]["timeout_seconds"]
         )
-        print("✓ Google AI client initialized", flush=True)
+        print("✓ Groq client initialized", flush=True)
 
         # Select topic
         print("🎲 Selecting topic...", flush=True)

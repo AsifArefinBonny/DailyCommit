@@ -148,10 +148,10 @@ lesson:
   questions_per_lesson: 3
   passage_length_target: 150  # words
 
-# Google AI Studio config (free tier: 1,500 requests/day, no credit card)
+# Groq config (free tier: 30 RPM, 1,000 RPD, no credit card, ultra-fast)
 llm:
-  provider: "google_ai"  # google_ai (free) or openrouter (paid)
-  model_name: "gemini-2.0-flash-exp"
+  provider: "groq"
+  model_name: "llama-3.3-70b-versatile"
   max_retries: 3
   timeout_seconds: 30
 
