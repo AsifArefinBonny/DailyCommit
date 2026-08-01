@@ -30,7 +30,12 @@
       "WebSearch",
       "WebFetch(domain:buldrr.com)",
       "Bash(npm install -g supabase)",
-      "Bash(supabase login:*)"
+      "Bash(supabase login:*)",
+      "Bash(export:*)",
+      "Bash(__NEW_LINE__ python3 deploy_now.py)",
+      "Bash(curl -X POST \"https://api.telegram.org/bot8883911322:AAHcdyWpsWHvdosW9BtP0Km4Jft8crphcEM/setWebhook\" -H \"Content-Type: application/json\" -d '{\"\"\"\"url\"\"\"\": \"\"\"\"https://ybblpzymovvngtllrsbn.supabase.co/functions/v1/telegram-webhook\"\"\"\"}')",
+      "Bash(curl -X POST 'https://api.telegram.org/bot8883911322:AAHcdyWpsWHvdosW9BtP0Km4Jft8crphcEM/setWebhook' )",
+      "Bash(curl -s 'https://api.telegram.org/bot8883911322:AAHcdyWpsWHvdosW9BtP0Km4Jft8crphcEM/getWebhookInfo')"
     ],
     "deny": [],
     "ask": []
