@@ -4,13 +4,44 @@ Generates a read-first lesson, inserts to DB, sends to Telegram.
 """
 import os
 import sys
+
+print("🚀 Starting generate_daily.py...", flush=True)
+
 import yaml
 from datetime import date
-from db import SupabaseDB
-from openrouter import OpenRouterClient
-from models import Lesson, Question
-from telegram_notify import send_message, notify_admin
+
+print("✓ Standard libraries imported", flush=True)
+
+try:
+    from db import SupabaseDB
+    print("✓ db module imported", flush=True)
+except Exception as e:
+    print(f"❌ Failed to import db: {e}", flush=True)
+    raise
+
+try:
+    from openrouter import OpenRouterClient
+    print("✓ openrouter module imported", flush=True)
+except Exception as e:
+    print(f"❌ Failed to import openrouter: {e}", flush=True)
+    raise
+
+try:
+    from models import Lesson, Question
+    print("✓ models module imported", flush=True)
+except Exception as e:
+    print(f"❌ Failed to import models: {e}", flush=True)
+    raise
+
+try:
+    from telegram_notify import send_message, notify_admin
+    print("✓ telegram_notify module imported", flush=True)
+except Exception as e:
+    print(f"❌ Failed to import telegram_notify: {e}", flush=True)
+    raise
+
 import random
+print("✓ All imports successful", flush=True)
 
 
 def load_config():
