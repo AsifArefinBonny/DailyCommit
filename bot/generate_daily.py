@@ -218,7 +218,7 @@ def send_lesson_to_telegram(db: SupabaseDB, lesson_id: str):
 
     # Format message
     message = f"📚 **{lesson['title']}**\n\n{lesson['body']}\n\n"
-    message += f"_{len(questions)} questions to follow..._"
+    message += f"✨ Use /learn to start the {len(questions)} questions!"
 
     # Send lesson
     success = send_message(chat_id, message)
@@ -229,8 +229,7 @@ def send_lesson_to_telegram(db: SupabaseDB, lesson_id: str):
                    {"lesson_id": lesson_id, "chat_id": chat_id})
         return
 
-    # TODO: Send first question with inline keyboard
-    # This will be handled by the Telegram webhook in v2
+    print(f"✓ Lesson sent to Telegram (user can use /learn to start questions)")
 
 
 def main():
