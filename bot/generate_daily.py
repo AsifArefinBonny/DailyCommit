@@ -219,9 +219,14 @@ def main():
         print(f"✅ Daily lesson generated and sent: {lesson.title}")
 
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"❌ ERROR: {str(e)}", file=sys.stderr)
+        print(f"Traceback:\n{error_details}", file=sys.stderr)
+
         notify_admin("Daily Lesson", "❌ Unexpected error",
                    str(e),
-                   {"traceback": str(e)[:500]},
+                   {"traceback": error_details[:500]},
                    run_url=os.getenv("GITHUB_RUN_URL"))
         sys.exit(1)
 
