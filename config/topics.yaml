@@ -150,10 +150,10 @@ lesson:
 
 # OpenRouter LLM config
 llm:
-  primary_model: "meta-llama/llama-3.1-8b-instruct:free"
+  primary_model: "openrouter/auto"
   fallback_models:
-    - "google/gemini-flash-1.5:free"
-    - "mistralai/mistral-7b-instruct:free"
+    - "qwen/qwen-3-coder"
+    - "openai/gpt-oss-20b"
   max_retries: 3
   timeout_seconds: 30
 
