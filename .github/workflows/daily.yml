@@ -33,7 +33,7 @@ jobs:
           GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           cd bot
-          python generate_daily.py
+          python generate_daily.py 2>&1 || { echo "Script failed with exit code $?"; exit 1; }
 
       - name: Notify on failure
         if: failure()
