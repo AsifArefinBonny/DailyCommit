@@ -20,10 +20,10 @@ except Exception as e:
     raise
 
 try:
-    from openrouter import OpenRouterClient
-    print("✓ openrouter module imported", flush=True)
+    from google_ai import GoogleAIClient
+    print("✓ google_ai module imported", flush=True)
 except Exception as e:
-    print(f"❌ Failed to import openrouter: {e}", flush=True)
+    print(f"❌ Failed to import google_ai: {e}", flush=True)
     raise
 
 try:
@@ -222,15 +222,14 @@ def main():
         db = SupabaseDB()
         print("✓ DB connected", flush=True)
 
-        print("🤖 Initializing OpenRouter client...", flush=True)
-        llm = OpenRouterClient(
-            api_key=os.getenv("OPENROUTER_API_KEY"),
-            primary_model=config["llm"]["primary_model"],
-            fallback_models=config["llm"]["fallback_models"],
+        print("🤖 Initializing Google AI client...", flush=True)
+        llm = GoogleAIClient(
+            api_key=os.getenv("GOOGLE_AI_API_KEY"),
+            model_name=config["llm"]["model_name"],
             max_retries=config["llm"]["max_retries"],
             timeout=config["llm"]["timeout_seconds"]
         )
-        print("✓ OpenRouter client initialized", flush=True)
+        print("✓ Google AI client initialized", flush=True)
 
         # Select topic
         print("🎲 Selecting topic...", flush=True)

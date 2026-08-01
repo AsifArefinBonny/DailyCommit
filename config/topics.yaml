@@ -148,12 +148,10 @@ lesson:
   questions_per_lesson: 3
   passage_length_target: 150  # words
 
-# OpenRouter LLM config
+# Google AI Studio config (free tier: 1,500 requests/day, no credit card)
 llm:
-  primary_model: "openrouter/auto"
-  fallback_models:
-    - "qwen/qwen-3-coder"
-    - "openai/gpt-oss-20b"
+  provider: "google_ai"  # google_ai (free) or openrouter (paid)
+  model_name: "gemini-2.0-flash-exp"
   max_retries: 3
   timeout_seconds: 30
 

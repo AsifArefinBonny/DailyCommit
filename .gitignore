@@ -39,3 +39,4 @@ secrets/
 # Temporary files
 *.tmp
 *.temp
+*.sh
