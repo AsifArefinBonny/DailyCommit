@@ -28,7 +28,9 @@
       "Bash(gh run view:*)",
       "WebFetch(domain:openrouter.ai)",
       "WebSearch",
-      "WebFetch(domain:buldrr.com)"
+      "WebFetch(domain:buldrr.com)",
+      "Bash(npm install -g supabase)",
+      "Bash(supabase login:*)"
     ],
     "deny": [],
     "ask": []
