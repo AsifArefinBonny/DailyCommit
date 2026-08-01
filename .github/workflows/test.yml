@@ -8,6 +8,8 @@ on:
   schedule:
     # Run tests daily at 9:00 AM UTC
     - cron: '0 9 * * *'
+    # Run tests weekly on Monday at 9:00 AM UTC for email report
+    - cron: '0 9 * * 1'
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
@@ -117,3 +119,60 @@ jobs:
           bandit -r bot/ -ll
           safety check --file=bot/requirements.txt
         continue-on-error: true  # Don't fail on security warnings yet
+
+  email-report:
+    runs-on: ubuntu-latest
+    needs: [test, lint, security]
+    if: github.event.schedule == '0 9 * * 1'  # Only on weekly schedule
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate test report
+        id: report
+        run: |
+          echo "REPORT<<EOF" >> $GITHUB_OUTPUT
+          echo "# DailyCommit Weekly Test Report 📊" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "**Date**: $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_OUTPUT
+          echo "**Repository**: ${{ github.repository }}" >> $GITHUB_OUTPUT
+          echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "## Test Results" >> $GITHUB_OUTPUT
+          echo "✅ Unit Tests: ${{ needs.test.result }}" >> $GITHUB_OUTPUT
+          echo "✅ Integration Tests: ${{ needs.test.result }}" >> $GITHUB_OUTPUT
+          echo "✅ Regression Tests: ${{ needs.test.result }}" >> $GITHUB_OUTPUT
+          echo "✅ Linting: ${{ needs.lint.result }}" >> $GITHUB_OUTPUT
+          echo "✅ Security Checks: ${{ needs.security.result }}" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "## Coverage" >> $GITHUB_OUTPUT
+          echo "Target: 70%" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "View full results: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Send email report
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "DailyCommit Weekly Test Report - ${{ needs.test.result }}"
+          to: asifarefinbonny18@gmail.com
+          from: DailyCommit Bot
+          body: ${{ steps.report.outputs.REPORT }}
+          content_type: text/plain
+          convert_markdown: true
+
+      - name: Send Telegram notification
+        if: always()
+        run: |
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"chat_id\": \"${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}\",
+              \"text\": \"📊 *DailyCommit Weekly Test Report*\n\n✅ Tests: ${{ needs.test.result }}\n✅ Lint: ${{ needs.lint.result }}\n✅ Security: ${{ needs.security.result }}\n\nView details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\",
+              \"parse_mode\": \"Markdown\"
+            }"
