@@ -211,11 +211,18 @@ def send_lesson_to_telegram(db: SupabaseDB, lesson_id: str):
 def main():
     """Main entry point for daily lesson generation."""
     try:
+        print("📝 Starting main()...", flush=True)
         # Load config
+        print("📂 Loading config...", flush=True)
         config = load_config()
+        print(f"✓ Config loaded: {len(config.get('topics', []))} topics found", flush=True)
 
         # Initialize services
+        print("🔌 Initializing Supabase DB...", flush=True)
         db = SupabaseDB()
+        print("✓ DB connected", flush=True)
+
+        print("🤖 Initializing OpenRouter client...", flush=True)
         llm = OpenRouterClient(
             api_key=os.getenv("OPENROUTER_API_KEY"),
             primary_model=config["llm"]["primary_model"],
@@ -223,15 +230,23 @@ def main():
             max_retries=config["llm"]["max_retries"],
             timeout=config["llm"]["timeout_seconds"]
         )
+        print("✓ OpenRouter client initialized", flush=True)
 
         # Select topic
+        print("🎲 Selecting topic...", flush=True)
         topic = select_topic(db, config)
+        print(f"✓ Topic selected: {topic.get('name') if topic else 'None'}", flush=True)
         if not topic:
             sys.exit(1)
 
         # Generate lesson
+        print("📝 Generating lesson prompt...", flush=True)
         prompt = generate_lesson_prompt(topic, config)
+        print(f"✓ Prompt generated ({len(prompt)} chars)", flush=True)
+
+        print("🤖 Calling OpenRouter API...", flush=True)
         lesson = llm.generate(prompt, Lesson)
+        print(f"✓ Lesson generated: {lesson.title if lesson else 'None'}", flush=True)
 
         if not lesson:
             notify_admin("Daily Lesson", "❌ Generation failed",
