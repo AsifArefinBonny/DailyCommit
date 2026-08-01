@@ -1,151 +1,56 @@
-# Deploy Telegram Webhook to Supabase
+# Deploy Webhook with Debug Fixes
 
-This guide will help you deploy the interactive Telegram webhook to Supabase Edge Functions.
+## Quick Deploy via Dashboard (Recommended)
 
-## Prerequisites
+1. **Go to Supabase Dashboard**
+   - Visit: https://supabase.com/dashboard/project/ybblpzymovvngtllrsbn/functions
+   - Navigate to: Edge Functions → telegram-webhook
 
-- Supabase CLI installed
-- Supabase project created
-- Telegram bot token
+2. **Update the Function Code**
+   - Click "Edit Function" or create new version
+   - Copy contents from: `supabase/functions/telegram-webhook/index.ts`
+   - Paste into the editor
+   - Click "Deploy"
 
-## Step 1: Install Supabase CLI
+3. **Verify Environment Variables**
+   - Check that these are set:
+     - `TELEGRAM_BOT_TOKEN`
+     - `DB_URL`  
+     - `DB_SERVICE_ROLE_KEY`
+
+4. **Test the Deployment**
+   - Open Telegram bot
+   - Send `/learn` command
+   - Click an answer button
+   - Check the logs in Supabase dashboard
+
+## Check Logs for Debug Output
+
+After testing, check logs for these debug messages:
+```
+[DEBUG] handleAnswer called: data=ans_XXX_A, userId=YYY
+[DEBUG] Parsed: questionId=XXX, answer=A
+[DEBUG] Question found: type=mcq, correct_answer=A
+```
+
+## Alternative: Deploy via CLI
+
+If you have SUPABASE_ACCESS_TOKEN:
 
 ```bash
-# macOS/Linux
-brew install supabase/tap/supabase
-
-# Or via npm
-npm install -g supabase
+export SUPABASE_ACCESS_TOKEN='your-token-here'
+./deploy_webhook.sh
 ```
 
-## Step 2: Login to Supabase
+## What Was Fixed
 
-```bash
-supabase login
-```
+1. ✅ Added debug logging to trace answer validation flow
+2. ✅ Fixed setTimeout for Edge Functions (now uses await pattern)
+3. ✅ Better error handling and logging for debugging
 
-## Step 3: Link to Your Project
+## Expected Behavior After Fix
 
-```bash
-supabase link --project-ref YOUR_PROJECT_REF
-```
-
-**Find your project ref:**
-- Go to: https://supabase.com/dashboard/project/YOUR_PROJECT/settings/general
-- Copy the "Reference ID"
-
-## Step 4: Set Environment Secrets
-
-```bash
-supabase secrets set TELEGRAM_BOT_TOKEN=your_bot_token_here
-supabase secrets set SUPABASE_URL=your_supabase_url
-supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-```
-
-## Step 5: Deploy the Function
-
-```bash
-supabase functions deploy telegram-webhook
-```
-
-This will output a URL like:
-```
-https://YOUR_PROJECT_REF.supabase.co/functions/v1/telegram-webhook
-```
-
-## Step 6: Register Webhook with Telegram
-
-```bash
-curl -X POST "https://api.telegram.org/botYOUR_BOT_TOKEN/setWebhook" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://YOUR_PROJECT_REF.supabase.co/functions/v1/telegram-webhook"
-  }'
-```
-
-**Replace:**
-- `YOUR_BOT_TOKEN` with your actual Telegram bot token
-- `YOUR_PROJECT_REF` with your Supabase project reference ID
-
-## Step 7: Test the Webhook
-
-Send `/start` to your Telegram bot. You should receive:
-
-```
-👋 Welcome to DailyCommit, [Your Name]!
-
-I'll help you level up your QA skills with daily micro-lessons.
-
-📚 Use /learn to start today's lesson
-📊 Use /stats to see your progress
-
-Let's get started! 💪
-```
-
-Then send `/learn` to start answering questions with interactive buttons!
-
-## Verify Deployment
-
-```bash
-# Check function logs
-supabase functions logs telegram-webhook
-
-# Check if webhook is registered
-curl "https://api.telegram.org/botYOUR_BOT_TOKEN/getWebhookInfo"
-```
-
-## Troubleshooting
-
-**Function not deploying:**
-```bash
-# Check your Supabase CLI version
-supabase --version
-
-# Update if needed
-brew upgrade supabase
-```
-
-**Webhook not responding:**
-```bash
-# Check the function logs
-supabase functions logs telegram-webhook --follow
-
-# Test the endpoint directly
-curl https://YOUR_PROJECT_REF.supabase.co/functions/v1/telegram-webhook \
-  -H "Content-Type: application/json" \
-  -d '{"test": "ping"}'
-```
-
-**Environment variables not set:**
-```bash
-# List all secrets
-supabase secrets list
-
-# Set missing secrets
-supabase secrets set VARIABLE_NAME=value
-```
-
-## Commands Available
-
-Once deployed, users can use:
-- `/start` - Welcome message
-- `/learn` - Start answering questions
-- `/stats` - View progress and XP
-
-## Features Enabled
-
-✅ Interactive question delivery with inline buttons
-✅ Answer validation with immediate feedback
-✅ XP tracking (+10 XP per correct answer)
-✅ Streak tracking (consecutive days)
-✅ Spaced repetition (SM-2 algorithm)
-✅ Progress statistics
-
-## Free Tier Usage
-
-The webhook uses Supabase Edge Functions free tier:
-- 500,000 invocations/month
-- With ~100 invocations/day = 3,000/month
-- **99.4% free tier remaining**
-
-No additional costs! 🎉
+- Click answer button → See validation feedback ("✅ Correct!" or "❌ Incorrect")
+- Message updates with explanation
+- Next question appears after 2 second delay
+- Debug logs appear in Supabase function logs

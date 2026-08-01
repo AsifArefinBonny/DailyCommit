@@ -357,24 +357,33 @@ async function handleAnswer(
   userId: string,
   data: string
 ) {
+  console.log(`[DEBUG] handleAnswer called: data=${data}, userId=${userId}`);
+
   // Parse callback data: ans_<question_id>_<answer>
   const parts = data.split("_");
-  if (parts.length < 3) return;
+  if (parts.length < 3) {
+    console.log(`[ERROR] Invalid callback data format: ${data}`);
+    return;
+  }
 
   const questionId = parts[1];
   const answer = parts.slice(2).join("_");
+  console.log(`[DEBUG] Parsed: questionId=${questionId}, answer=${answer}`);
 
   // Get question details
-  const { data: question } = await supabase
+  const { data: question, error } = await supabase
     .from("question")
     .select("*")
     .eq("id", questionId)
     .single();
 
-  if (!question) {
+  if (error || !question) {
+    console.log(`[ERROR] Question not found: ${questionId}`, error);
     await answerCallbackQuery(callbackQueryId, "Question not found", true);
     return;
   }
+
+  console.log(`[DEBUG] Question found: type=${question.type}, correct_answer=${question.correct_answer}`);
 
   // Special handling for reveal
   if (answer === "reveal") {
@@ -396,7 +405,8 @@ async function handleAnswer(
 
     await scheduleReview(userId, questionId, false);
 
-    setTimeout(() => sendNextQuestion(chatId, userId), 2000);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    await sendNextQuestion(chatId, userId);
     return;
   }
 
@@ -447,7 +457,10 @@ async function handleAnswer(
   );
 
   // Send next question after delay
-  setTimeout(() => sendNextQuestion(chatId, userId), 3000);
+  // Note: setTimeout might not work reliably in Edge Functions
+  // Send immediately instead
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  await sendNextQuestion(chatId, userId);
 }
 
 // ============================================================================
