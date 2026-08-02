@@ -470,7 +470,14 @@ async function handleAnswer(
 async function handleStart(chatId: number, userId: string, firstName: string) {
   await sendMessage(
     chatId,
-    `👋 *Welcome to DailyCommit, ${firstName}!*\n\nI'll help you level up your QA skills with daily micro-lessons.\n\n📚 Use /learn to start today's lesson\n📊 Use /stats to see your progress\n\nLet's get started! 💪`
+    `👋 *Welcome to DailyCommit, ${firstName}!*\n\n` +
+    `I'll help you level up your QA skills with daily micro-lessons.\n\n` +
+    `*Available Commands:*\n` +
+    `📚 /learn - Practice with questions\n` +
+    `📊 /stats - View your progress\n` +
+    `⏰ /settime - Set notification time (e.g., /settime 14:00 Asia/Dhaka)\n` +
+    `🔔 /notifications - Toggle daily reminders (on/off)\n\n` +
+    `Let's get started! 💪`
   );
 }
 

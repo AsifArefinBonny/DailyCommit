@@ -40,3 +40,4 @@ secrets/
 *.tmp
 *.temp
 *.sh
+.claude/settings.local.json
