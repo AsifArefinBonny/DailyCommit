@@ -118,7 +118,7 @@ async function getOrCreateUser(telegramUserId: number, firstName: string) {
 
 async function getPendingQuestion(userId: string) {
   // Get the most recent lesson that has unanswered questions
-  const { data: lessons } = await supabase
+  const { data: lessons, error: lessonsError } = await supabase
     .from("lesson")
     .select(`
       id,
@@ -138,36 +138,61 @@ async function getPendingQuestion(userId: string) {
     .order("lesson_date", { ascending: false })
     .limit(10);
 
-  if (!lessons || lessons.length === 0) return null;
+  if (lessonsError) {
+    console.error("[ERROR] Failed to fetch lessons:", lessonsError);
+    return null;
+  }
+
+  if (!lessons || lessons.length === 0) {
+    console.log("[DEBUG] No lessons found in database");
+    return null;
+  }
+
+  console.log(`[DEBUG] Found ${lessons.length} lessons, checking for unanswered questions`);
 
   // Find first question not yet answered correctly by this user
   for (const lesson of lessons) {
     for (const question of (lesson as any).question) {
-      const { data: attempt } = await supabase
+      // Check if user has already answered this question correctly
+      // Use maybeSingle() instead of single() to handle 0 or 1+ rows gracefully
+      const { data: attempts, error: attemptError } = await supabase
         .from("attempt")
         .select("*")
         .eq("user_id", userId)
         .eq("question_id", question.id)
-        .eq("correct", true)
-        .single();
+        .eq("correct", true);
 
-      if (!attempt) {
+      if (attemptError) {
+        console.error(`[ERROR] Failed to check attempts for question ${question.id}:`, attemptError);
+        continue; // Skip this question on error
+      }
+
+      const hasCorrectAttempt = attempts && attempts.length > 0;
+
+      console.log(`[DEBUG] Question ${question.id}: ${hasCorrectAttempt ? 'ANSWERED' : 'PENDING'} (${attempts?.length || 0} correct attempts)`);
+
+      if (!hasCorrectAttempt) {
+        console.log(`[DEBUG] Returning pending question: ${question.id}`);
         return { lesson, question };
       }
     }
   }
 
+  console.log("[DEBUG] No pending questions found - all answered!");
   return null;
 }
 
 async function updateStreak(userId: string) {
-  const { data: user } = await supabase
+  const { data: user, error: userError } = await supabase
     .from("app_user")
     .select("*")
     .eq("id", userId)
     .single();
 
-  if (!user) return;
+  if (userError || !user) {
+    console.error(`[ERROR] Failed to get user for streak update:`, userError);
+    return;
+  }
 
   const today = new Date().toISOString().split("T")[0];
   const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
@@ -181,6 +206,7 @@ async function updateStreak(userId: string) {
 
   if (todayAttempts && todayAttempts.length > 0) {
     // Already counted today
+    console.log(`[DEBUG] Streak already counted for today for user ${userId}`);
     return;
   }
 
@@ -199,30 +225,47 @@ async function updateStreak(userId: string) {
 
   const longestStreak = Math.max(user.longest_streak, newStreak);
 
-  await supabase
+  const { error: updateError } = await supabase
     .from("app_user")
     .update({
       current_streak: newStreak,
       longest_streak: longestStreak,
     })
     .eq("id", userId);
+
+  if (updateError) {
+    console.error(`[ERROR] Failed to update streak:`, updateError);
+    return;
+  }
+
+  console.log(`[DEBUG] Streak updated for user ${userId}: ${newStreak} days (longest: ${longestStreak})`);
 }
 
 async function awardXP(userId: string, amount: number, reason: string) {
-  const { data: user } = await supabase
+  const { data: user, error: selectError } = await supabase
     .from("app_user")
     .select("total_xp")
     .eq("id", userId)
     .single();
 
-  if (!user) return;
+  if (selectError || !user) {
+    console.error(`[ERROR] Failed to get user for XP award:`, selectError);
+    return;
+  }
 
-  await supabase
+  const newXP = user.total_xp + amount;
+
+  const { error: updateError } = await supabase
     .from("app_user")
-    .update({ total_xp: user.total_xp + amount })
+    .update({ total_xp: newXP })
     .eq("id", userId);
 
-  console.log(`Awarded ${amount} XP to user ${userId}: ${reason}`);
+  if (updateError) {
+    console.error(`[ERROR] Failed to update XP:`, updateError);
+    return;
+  }
+
+  console.log(`[DEBUG] Awarded ${amount} XP to user ${userId}: ${reason} (new total: ${newXP})`);
 }
 
 // ============================================================================
@@ -262,12 +305,17 @@ async function scheduleReview(
   questionId: string,
   correct: boolean
 ) {
-  const { data: existing } = await supabase
+  const { data: existing, error: selectError } = await supabase
     .from("review_schedule")
     .select("*")
     .eq("user_id", userId)
     .eq("question_id", questionId)
-    .single();
+    .maybeSingle();
+
+  if (selectError) {
+    console.error(`[ERROR] Failed to get review schedule:`, selectError);
+    return;
+  }
 
   const quality = correct ? 4 : 2; // Simplified quality rating
   const easiness = existing?.easiness_factor || 2.5;
@@ -279,7 +327,7 @@ async function scheduleReview(
     quality
   );
 
-  await supabase.from("review_schedule").upsert({
+  const { error: upsertError } = await supabase.from("review_schedule").upsert({
     user_id: userId,
     question_id: questionId,
     next_review_date: nextReview.toISOString(),
@@ -287,6 +335,13 @@ async function scheduleReview(
     easiness_factor: newEasiness,
     repetitions: (existing?.repetitions || 0) + 1,
   });
+
+  if (upsertError) {
+    console.error(`[ERROR] Failed to upsert review schedule:`, upsertError);
+    return;
+  }
+
+  console.log(`[DEBUG] Review scheduled for question ${questionId}: next in ${newInterval} days`);
 }
 
 // ============================================================================
@@ -476,41 +531,53 @@ async function handleAnswer(
 
   console.log(`[DEBUG] Validation result: ${correct}`);
 
-  // Record attempt
-  await supabase.from("attempt").insert({
+  // Record attempt in database
+  const { error: insertError } = await supabase.from("attempt").insert({
     user_id: userId,
     question_id: questionId,
     user_answer: answer,
     correct,
   });
 
+  if (insertError) {
+    console.error(`[ERROR] Failed to insert attempt:`, insertError);
+    await answerCallbackQuery(callbackQueryId, "⚠️ Database error. Please try again.", true);
+    return;
+  }
+
+  console.log(`[DEBUG] Attempt recorded: questionId=${questionId}, correct=${correct}`);
+
   // Update spaced repetition
   await scheduleReview(userId, questionId, correct);
 
-  // Award XP
+  // Award XP and update streak if correct
   if (correct) {
     await awardXP(userId, 10, "Correct answer");
     await updateStreak(userId);
-    await answerCallbackQuery(callbackQueryId, "✅ Correct! +10 XP");
-  } else {
-    await answerCallbackQuery(callbackQueryId, "❌ Incorrect. Try again!");
   }
 
-  // Update message with feedback
+  // Send callback query response (quick popup)
+  const callbackMessage = correct
+    ? "✅ Correct! +10 XP"
+    : "❌ Incorrect. Try again!";
+  await answerCallbackQuery(callbackQueryId, callbackMessage);
+
+  // Update message with detailed feedback
   const feedbackEmoji = correct ? "✅" : "❌";
-  const feedbackText = correct ? "Correct!" : "Incorrect";
+  const feedbackText = correct ? "**Correct!**" : "**Incorrect**";
+  const xpText = correct ? "\n\n🎯 *+10 XP earned!*" : "";
 
   await editMessage(
     chatId,
     messageId,
-    `📝 *Question*\n\n${question.prompt}\n\n${feedbackEmoji} *${feedbackText}*\n\n💡 *Explanation:*\n${question.explanation}`,
+    `📝 *Question*\n\n${question.prompt}\n\n${feedbackEmoji} ${feedbackText}${xpText}\n\n💡 *Explanation:*\n${question.explanation}\n\n⏳ _Loading next question..._`,
     null
   );
 
-  // Send next question after delay
-  // Note: setTimeout might not work reliably in Edge Functions
-  // Send immediately instead
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  // Send next question after 3 seconds (giving user time to read explanation)
+  await new Promise(resolve => setTimeout(resolve, 3000));
+
+  console.log(`[DEBUG] About to fetch next question for user ${userId}`);
   await sendNextQuestion(chatId, userId);
 }
 
