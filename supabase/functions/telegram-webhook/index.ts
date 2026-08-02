@@ -648,6 +648,8 @@ async function handleAnswer(
 // ============================================================================
 
 async function handleStart(chatId: number, userId: string, firstName: string) {
+  const dashboardUrl = `https://asifarefinbonny.github.io/DailyCommit/?user=${chatId}`;
+
   await sendMessage(
     chatId,
     `👋 *Welcome to DailyCommit, ${firstName}!*\n\n` +
@@ -657,6 +659,8 @@ async function handleStart(chatId: number, userId: string, firstName: string) {
     `📊 /stats - View your progress\n` +
     `⏰ /settime - Set notification time (e.g., /settime 14:00 Asia/Dhaka)\n` +
     `🔔 /notifications - Toggle daily reminders (on/off)\n\n` +
+    `📈 *Your Dashboard:*\n` +
+    `${dashboardUrl}\n\n` +
     `Let's get started! 💪`
   );
 }
@@ -683,6 +687,8 @@ async function handleStats(chatId: number, userId: string) {
   const correctAttempts = attempts?.filter((a) => a.is_correct).length || 0;
   const accuracy = totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : 0;
 
+  const dashboardUrl = `https://asifarefinbonny.github.io/DailyCommit/?user=${chatId}`;
+
   const statsText = `📊 *Your Progress*\n\n` +
     `🎯 Total XP: ${user.xp}\n` +
     `🔥 Current Streak: ${user.current_streak} days\n` +
@@ -690,6 +696,7 @@ async function handleStats(chatId: number, userId: string) {
     `📝 Questions Answered: ${totalAttempts}\n` +
     `✅ Correct: ${correctAttempts}\n` +
     `📈 Accuracy: ${accuracy}%\n\n` +
+    `📈 *View Full Dashboard:*\n${dashboardUrl}\n\n` +
     `Keep it up! 💪`;
 
   await sendMessage(chatId, statsText);
