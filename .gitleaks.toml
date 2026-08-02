@@ -1,0 +1,25 @@
+title = "DailyCommit Secret Scanning Config"
+
+[[rules]]
+id = "telegram-bot-token"
+description = "Telegram Bot Token"
+regex = '''[0-9]{8,10}:[a-zA-Z0-9_-]{35}'''
+tags = ["telegram", "secret"]
+
+[[rules]]
+id = "supabase-service-key"
+description = "Supabase Service Role Key"
+regex = '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+'''
+tags = ["supabase", "jwt", "secret"]
+
+[[rules]]
+id = "groq-api-key"
+description = "Groq API Key"
+regex = '''gsk_[a-zA-Z0-9]{52}'''
+tags = ["groq", "api-key", "secret"]
+
+[allowlist]
+paths = [
+    '''^\.env\.example$''',
+    '''^docs/config\.js$''',  # Contains anon key only (safe)
+]
