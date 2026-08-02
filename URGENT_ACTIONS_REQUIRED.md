@@ -75,7 +75,7 @@ brew install bfg
 # Create list of secrets to remove
 cat > secrets.txt << 'SECRETS'
 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InliYmxwenltb3Z2bmd0bGxyc2JuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTYwNTI1OCwiZXhwIjoyMTAxMTgxMjU4fQ.ri0VXmwF1597IQ38BBL_ysYhM8IdDuwAXX8RIw3foSg
-8883911322:AAHcdyWpsWHvdosW9BtP0Km4Jft8crphcEM
+REDACTED_OLD_TOKEN
 SECRETS
 
 # Clean repository
