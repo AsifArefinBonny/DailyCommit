@@ -42,3 +42,21 @@ secrets/
 *.temp
 *.sh
 .claude/settings.local.json
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*_secret*
+*_token*
+secrets/
+
+# Sensitive Python files with hardcoded credentials
+verify_migration.py
+run_migration.py
+run_migration_direct.py
+apply_migration.py
+check_lesson_status.py
+ux_audit_framework.py
