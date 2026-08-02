@@ -3,54 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DailyCommit — Learning Dashboard</title>
+    <title>DailyCommit - Learning Progress Dashboard</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
         <header>
-            <h1>📚 DailyCommit</h1>
-            <p class="subtitle">Daily micro-lessons in QA, DevOps, and coding</p>
+            <h1>📚 DailyCommit Learning Progress</h1>
+            <p class="subtitle">Track your SQA mastery journey</p>
         </header>
 
-        <section class="stats-grid">
+        <!-- Stats Cards -->
+        <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-value" id="current-streak">—</div>
-                <div class="stat-label">Current Streak</div>
+                <div class="stat-icon">🎯</div>
+                <div class="stat-content">
+                    <div class="stat-value" id="lessonsCompleted">-</div>
+                    <div class="stat-label">Lessons Completed</div>
+                </div>
             </div>
+
             <div class="stat-card">
-                <div class="stat-value" id="longest-streak">—</div>
-                <div class="stat-label">Longest Streak</div>
+                <div class="stat-icon">⭐</div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalXP">-</div>
+                    <div class="stat-label">Total XP</div>
+                </div>
             </div>
+
             <div class="stat-card">
-                <div class="stat-value" id="level">—</div>
-                <div class="stat-label">Level</div>
+                <div class="stat-icon">🔥</div>
+                <div class="stat-content">
+                    <div class="stat-value" id="currentStreak">-</div>
+                    <div class="stat-label">Day Streak</div>
+                </div>
             </div>
+
             <div class="stat-card">
-                <div class="stat-value" id="xp">—</div>
-                <div class="stat-label">Total XP</div>
+                <div class="stat-icon">✅</div>
+                <div class="stat-content">
+                    <div class="stat-value" id="accuracy">-</div>
+                    <div class="stat-label">Accuracy</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Heatmap -->
+        <section class="card">
+            <h2>📊 Activity Heatmap</h2>
+            <div id="heatmapContainer">
+                <div class="heatmap-legend">
+                    <span>Less</span>
+                    <div class="legend-squares">
+                        <div class="legend-square level-0"></div>
+                        <div class="legend-square level-1"></div>
+                        <div class="legend-square level-2"></div>
+                        <div class="legend-square level-3"></div>
+                        <div class="legend-square level-4"></div>
+                    </div>
+                    <span>More</span>
+                </div>
+                <div id="heatmap"></div>
             </div>
         </section>
 
-        <section class="activity-section">
-            <h2>Activity Heatmap</h2>
-            <div id="heatmap" class="heatmap">
-                <p class="placeholder">Loading...</p>
+        <!-- Charts Row -->
+        <div class="charts-grid">
+            <div class="card">
+                <h2>📈 XP Progress</h2>
+                <canvas id="xpChart"></canvas>
+            </div>
+
+            <div class="card">
+                <h2>🎯 Accuracy Trend</h2>
+                <canvas id="accuracyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Topic Mastery -->
+        <section class="card">
+            <h2>💡 Topic Mastery</h2>
+            <div id="topicMastery">
+                <p class="loading">Loading topic data...</p>
             </div>
         </section>
 
-        <section class="lessons-section">
-            <h2>Recent Lessons</h2>
-            <div id="recent-lessons" class="lessons-list">
-                <p class="placeholder">Loading...</p>
+        <!-- Recent Activity -->
+        <section class="card">
+            <h2>📝 Recent Activity</h2>
+            <div id="recentActivity">
+                <p class="loading">Loading recent lessons...</p>
             </div>
         </section>
 
+        <!-- Footer -->
         <footer>
-            <p>Powered by <a href="https://github.com/AsifArefinBonny/DailyCommit">DailyCommit</a></p>
+            <p>Last updated: <span id="lastUpdated">-</span></p>
+            <p>DailyCommit - Your SQA Learning Companion 🚀</p>
         </footer>
     </div>
 
+    <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
