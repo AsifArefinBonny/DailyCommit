@@ -5,6 +5,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { getPendingQuestion } from "./lesson-progression.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
 const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
@@ -116,7 +117,8 @@ async function getOrCreateUser(telegramUserId: number, firstName: string) {
   return newUser;
 }
 
-async function getPendingQuestion(userId: string, allowRepeat = false) {
+// OLD FUNCTION - REPLACED BY lesson-progression.ts
+async function getPendingQuestionOLD(userId: string, allowRepeat = false) {
   // Get the most recent lesson that has unanswered questions
   const { data: lessons, error: lessonsError } = await supabase
     .from("lesson")
@@ -420,27 +422,40 @@ function buildQuestionKeyboard(question: any): any {
   };
 }
 
-async function sendNextQuestion(chatId: number, userId: string, allowPractice = true) {
-  const pending = await getPendingQuestion(userId, allowPractice);
+async function sendNextQuestion(chatId: number, userId: string) {
+  const pending = await getPendingQuestion(supabase, userId);
 
   if (!pending) {
     await sendMessage(
       chatId,
-      "📚 *No questions available yet!*\n\nNew lessons arrive daily at 8:00 AM UTC.\n\nCheck back soon! 💪"
+      "📚 *Generating your lesson...*\n\nPlease wait a moment while I create fresh content for you! ⚡"
     );
     return;
   }
 
-  const { lesson, question, isPractice } = pending;
+  const { lesson, question, questionNumber, totalQuestions, lessonJustCompleted, xpEarned } = pending;
 
-  // Show difficulty level more clearly
-  const difficultyEmoji = ['⭐', '⭐⭐', '⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐⭐⭐'][question.difficulty - 1] || '⭐';
-  let questionText = `📝 *Question* (Difficulty: ${difficultyEmoji})\n\n${question.prompt}`;
-
-  // Add practice mode indicator if this is a repeat question
-  if (isPractice) {
-    questionText = `🔄 *Practice Mode*\n\n` + questionText + `\n\n💡 _You've completed all new questions! Keep practicing to reinforce your knowledge._`;
+  // If lesson was just completed, show celebration message first
+  if (lessonJustCompleted) {
+    await sendMessage(
+      chatId,
+      `🎉 *Lesson Complete!*\n\nYou earned *${xpEarned} XP*!\n\nGreat job! Let's continue with your next lesson...`
+    );
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Pause 2 seconds
   }
+
+  // Show difficulty level
+  const difficultyEmoji = ['⭐', '⭐⭐', '⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐⭐⭐'][question.difficulty - 1] || '⭐';
+
+  // Build question text with progress indicator
+  const progressText = questionNumber && totalQuestions
+    ? `*Question ${questionNumber}/${totalQuestions}*`
+    : `*Question*`;
+
+  let questionText = `📝 ${progressText}\n`;
+  questionText += `📚 Lesson: ${lesson.title}\n`;
+  questionText += `${difficultyEmoji} Difficulty\n\n`;
+  questionText += `${question.prompt}`;
 
   const keyboard = buildQuestionKeyboard(question);
   await sendMessage(chatId, questionText, keyboard);
