@@ -422,8 +422,59 @@ async function handleAnswer(
     return;
   }
 
-  // Validate answer
-  const correct = answer.toLowerCase() === question.correct_answer.toLowerCase();
+  // Validate answer (handle multiple formats)
+  let correct = false;
+  const userAnswer = answer.toLowerCase().trim();
+  const correctAnswer = question.correct_answer.toLowerCase().trim();
+
+  console.log(`[DEBUG] Validating: userAnswer='${userAnswer}' vs correctAnswer='${correctAnswer}'`);
+
+  if (question.type === "mcq") {
+    // For MCQ, answer could be:
+    // 1. Just a letter: "A", "B", "C", "D"
+    // 2. Full option text: "Hash table"
+    // 3. Option with letter prefix: "A. Hash table"
+
+    // Direct match (handles case 1)
+    if (userAnswer === correctAnswer) {
+      correct = true;
+    }
+    // Check if correct_answer is in options array and user selected that option
+    else if (question.options && Array.isArray(question.options)) {
+      // Find the index of the correct answer in options
+      const correctIndex = question.options.findIndex((opt: string) => {
+        const optLower = opt.toLowerCase().trim();
+        // Match if:
+        // 1. Exact match (e.g., "hash table" == "hash table")
+        // 2. Option starts with letter prefix (e.g., "a. hash table" with correct_answer="a")
+        // 3. Correct answer is full text contained in option (e.g., "hash table" in "a. hash table")
+        //    but only if correct_answer is more than 1 char (avoid "b" matching "hash table")
+        return optLower === correctAnswer ||
+               optLower.startsWith(`${correctAnswer}. `) ||
+               (correctAnswer.length > 1 && optLower.includes(correctAnswer));
+      });
+
+      // Map user's letter (A/B/C/D) to index (0/1/2/3)
+      const letterToIndex: {[key: string]: number} = { 'a': 0, 'b': 1, 'c': 2, 'd': 3 };
+      const userIndex = letterToIndex[userAnswer];
+
+      console.log(`[DEBUG] MCQ check: correctIndex=${correctIndex}, userIndex=${userIndex}`);
+
+      if (correctIndex !== -1 && userIndex !== undefined && correctIndex === userIndex) {
+        correct = true;
+      }
+    }
+  } else if (question.type === "true_false") {
+    // For true/false, normalize variations
+    const normalized = userAnswer.replace(/[✓✗\s]/g, '');
+    const correctNormalized = correctAnswer.replace(/[✓✗\s]/g, '');
+    correct = normalized === correctNormalized;
+  } else {
+    // For other types, direct comparison
+    correct = userAnswer === correctAnswer;
+  }
+
+  console.log(`[DEBUG] Validation result: ${correct}`);
 
   // Record attempt
   await supabase.from("attempt").insert({
