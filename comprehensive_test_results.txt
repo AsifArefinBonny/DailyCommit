@@ -1,0 +1,58 @@
+======================================================================
+🧪 COMPREHENSIVE BOT TEST - Chat ID: 6676414504
+======================================================================
+
+📨 Test 1: Sending test message to you...
+✅ Test message sent!
+
+💾 Test 2: Querying your user data...
+✅ Found your user:
+   Display Name: Test
+   XP: 0
+   Streak: 1 days
+   Notifications: ON
+
+💾 Test 3: Checking your recent attempts...
+⚠️ No attempts or error: 400
+
+💾 Test 4: Checking available questions...
+✅ Found 3 question(s):
+   • [mcq] What type of data structure is commonly used to st...
+   • [true_false] According to the passage, testers should only chec...
+   • [fill_in] The passage describes ____ as a critical aspect of...
+
+📨 Test 5: Sending /learn command to trigger question...
+✅ /learn command sent!
+   ⏳ Waiting 3 seconds for webhook to process...
+
+📊 Test 6: Instructions for checking deployment...
+   To verify the fix is deployed, check Supabase logs:
+   https://supabase.com/dashboard/project/ybblpzymovvngtllrsbn/functions/telegram-webhook/logs
+
+   You should see [DEBUG] messages like:
+   • [DEBUG] handleAnswer called: data=...
+   • [DEBUG] Validating: userAnswer='...' vs correctAnswer='...'
+   • [DEBUG] Validation result: true/false
+   • [DEBUG] Attempt recorded: questionId=..., correct=...
+
+📨 Test 7: Sending final test summary...
+✅ Summary sent to Telegram!
+
+======================================================================
+📊 TEST COMPLETE
+======================================================================
+✅ Your Chat ID: 6676414504
+✅ Messages sent to Telegram
+✅ Database queries working
+
+🎯 CHECK YOUR TELEGRAM NOW!
+   You should have received:
+   1. Test started message
+   2. A question from /learn
+   3. Test summary with stats
+
+⚠️  CRITICAL: Schema mismatch found!
+   Webhook code needs to be updated to use:
+   • `display_name` instead of `name`
+   • `xp` instead of `total_xp`
+

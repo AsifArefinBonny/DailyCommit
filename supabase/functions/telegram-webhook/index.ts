@@ -105,8 +105,8 @@ async function getOrCreateUser(telegramUserId: number, firstName: string) {
     .from("app_user")
     .insert({
       telegram_user_id: telegramUserId,
-      name: firstName,
-      total_xp: 0,
+      display_name: firstName,
+      xp: 0,
       current_streak: 0,
       longest_streak: 0,
     })
@@ -116,7 +116,7 @@ async function getOrCreateUser(telegramUserId: number, firstName: string) {
   return newUser;
 }
 
-async function getPendingQuestion(userId: string) {
+async function getPendingQuestion(userId: string, allowRepeat = false) {
   // Get the most recent lesson that has unanswered questions
   const { data: lessons, error: lessonsError } = await supabase
     .from("lesson")
@@ -148,33 +148,53 @@ async function getPendingQuestion(userId: string) {
     return null;
   }
 
-  console.log(`[DEBUG] Found ${lessons.length} lessons, checking for unanswered questions`);
+  console.log(`[DEBUG] Found ${lessons.length} lessons, checking for unanswered questions (allowRepeat=${allowRepeat})`);
 
-  // Find first question not yet answered correctly by this user
+  // First, try to find questions not yet attempted
   for (const lesson of lessons) {
     for (const question of (lesson as any).question) {
-      // Check if user has already answered this question correctly
-      // Use maybeSingle() instead of single() to handle 0 or 1+ rows gracefully
+      // Check if user has already attempted this question
       const { data: attempts, error: attemptError } = await supabase
         .from("attempt")
         .select("*")
         .eq("user_id", userId)
-        .eq("question_id", question.id)
-        .eq("correct", true);
+        .eq("question_id", question.id);
 
       if (attemptError) {
         console.error(`[ERROR] Failed to check attempts for question ${question.id}:`, attemptError);
         continue; // Skip this question on error
       }
 
-      const hasCorrectAttempt = attempts && attempts.length > 0;
+      const hasAttempted = attempts && attempts.length > 0;
+      const hasCorrectAttempt = attempts && attempts.some(a => a.is_correct);
 
-      console.log(`[DEBUG] Question ${question.id}: ${hasCorrectAttempt ? 'ANSWERED' : 'PENDING'} (${attempts?.length || 0} correct attempts)`);
+      console.log(`[DEBUG] Question ${question.id}: ${hasAttempted ? (hasCorrectAttempt ? 'CORRECT' : 'ATTEMPTED') : 'NEW'} (${attempts?.length || 0} total attempts)`);
 
-      if (!hasCorrectAttempt) {
-        console.log(`[DEBUG] Returning pending question: ${question.id}`);
-        return { lesson, question };
+      // Return first question that hasn't been attempted yet
+      if (!hasAttempted) {
+        console.log(`[DEBUG] Returning new question: ${question.id}`);
+        return { lesson, question, isPractice: false };
       }
+    }
+  }
+
+  // If allowRepeat is true and no pending questions, return RANDOM question for practice
+  if (allowRepeat && lessons.length > 0) {
+    // Collect ALL questions from ALL lessons
+    const allQuestions: any[] = [];
+    for (const lesson of lessons) {
+      const questions = (lesson as any).question || [];
+      for (const question of questions) {
+        allQuestions.push({ lesson, question });
+      }
+    }
+
+    if (allQuestions.length > 0) {
+      // Pick a RANDOM question instead of always the first one
+      const randomIndex = Math.floor(Math.random() * allQuestions.length);
+      const { lesson, question } = allQuestions[randomIndex];
+      console.log(`[DEBUG] All questions answered! Returning RANDOM question for practice: ${question.id} (${randomIndex + 1}/${allQuestions.length})`);
+      return { lesson, question, isPractice: true };
     }
   }
 
@@ -244,7 +264,7 @@ async function updateStreak(userId: string) {
 async function awardXP(userId: string, amount: number, reason: string) {
   const { data: user, error: selectError } = await supabase
     .from("app_user")
-    .select("total_xp")
+    .select("xp")
     .eq("id", userId)
     .single();
 
@@ -253,11 +273,11 @@ async function awardXP(userId: string, amount: number, reason: string) {
     return;
   }
 
-  const newXP = user.total_xp + amount;
+  const newXP = user.xp + amount;
 
   const { error: updateError } = await supabase
     .from("app_user")
-    .update({ total_xp: newXP })
+    .update({ xp: newXP })
     .eq("id", userId);
 
   if (updateError) {
@@ -305,20 +325,34 @@ async function scheduleReview(
   questionId: string,
   correct: boolean
 ) {
+  // Get question to find concept_tag
+  const { data: question, error: questionError } = await supabase
+    .from("question")
+    .select("concept_tag")
+    .eq("id", questionId)
+    .single();
+
+  if (questionError || !question?.concept_tag) {
+    console.error(`[ERROR] Failed to get question for review schedule:`, questionError);
+    return;
+  }
+
+  const conceptTag = question.concept_tag;
+
   const { data: existing, error: selectError } = await supabase
-    .from("review_schedule")
+    .from("review_item")
     .select("*")
     .eq("user_id", userId)
-    .eq("question_id", questionId)
+    .eq("concept_tag", conceptTag)
     .maybeSingle();
 
   if (selectError) {
-    console.error(`[ERROR] Failed to get review schedule:`, selectError);
+    console.error(`[ERROR] Failed to get review item:`, selectError);
     return;
   }
 
   const quality = correct ? 4 : 2; // Simplified quality rating
-  const easiness = existing?.easiness_factor || 2.5;
+  const easiness = existing?.ease || 2.5;
   const interval = existing?.interval_days || 0;
 
   const { newEasiness, newInterval, nextReview } = calculateNextReview(
@@ -327,21 +361,25 @@ async function scheduleReview(
     quality
   );
 
-  const { error: upsertError } = await supabase.from("review_schedule").upsert({
+  const today = new Date().toISOString().split('T')[0];
+
+  const { error: upsertError } = await supabase.from("review_item").upsert({
     user_id: userId,
-    question_id: questionId,
-    next_review_date: nextReview.toISOString(),
+    concept_tag: conceptTag,
+    due_date: nextReview.toISOString().split('T')[0],
     interval_days: newInterval,
-    easiness_factor: newEasiness,
+    ease: newEasiness,
     repetitions: (existing?.repetitions || 0) + 1,
+    last_reviewed: today,
+    last_result: correct ? 'correct' : 'incorrect',
   });
 
   if (upsertError) {
-    console.error(`[ERROR] Failed to upsert review schedule:`, upsertError);
+    console.error(`[ERROR] Failed to upsert review item:`, upsertError);
     return;
   }
 
-  console.log(`[DEBUG] Review scheduled for question ${questionId}: next in ${newInterval} days`);
+  console.log(`[DEBUG] Review scheduled for concept ${conceptTag}: next in ${newInterval} days`);
 }
 
 // ============================================================================
@@ -374,28 +412,35 @@ function buildQuestionKeyboard(question: any): any {
   }
 
   // For fill_in, predict_output, spot_the_bug, short_answer, scenario
+  // Simplified: Just show answer (text input not implemented yet)
   return {
     inline_keyboard: [
-      [{ text: "✏️ Type your answer", callback_data: `ans_${question.id}_text` }],
       [{ text: "🔍 Show answer", callback_data: `ans_${question.id}_reveal` }],
     ],
   };
 }
 
-async function sendNextQuestion(chatId: number, userId: string) {
-  const pending = await getPendingQuestion(userId);
+async function sendNextQuestion(chatId: number, userId: string, allowPractice = true) {
+  const pending = await getPendingQuestion(userId, allowPractice);
 
   if (!pending) {
     await sendMessage(
       chatId,
-      "🎉 *Amazing work!*\n\nYou've completed all available questions.\n\nNew lessons arrive daily at 8:00 AM UTC. See you tomorrow! 💪"
+      "📚 *No questions available yet!*\n\nNew lessons arrive daily at 8:00 AM UTC.\n\nCheck back soon! 💪"
     );
     return;
   }
 
-  const { lesson, question } = pending;
+  const { lesson, question, isPractice } = pending;
 
-  const questionText = `📝 *Question ${question.difficulty}/5*\n\n${question.prompt}`;
+  // Show difficulty level more clearly
+  const difficultyEmoji = ['⭐', '⭐⭐', '⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐⭐⭐'][question.difficulty - 1] || '⭐';
+  let questionText = `📝 *Question* (Difficulty: ${difficultyEmoji})\n\n${question.prompt}`;
+
+  // Add practice mode indicator if this is a repeat question
+  if (isPractice) {
+    questionText = `🔄 *Practice Mode*\n\n` + questionText + `\n\n💡 _You've completed all new questions! Keep practicing to reinforce your knowledge._`;
+  }
 
   const keyboard = buildQuestionKeyboard(question);
   await sendMessage(chatId, questionText, keyboard);
@@ -454,8 +499,9 @@ async function handleAnswer(
     await supabase.from("attempt").insert({
       user_id: userId,
       question_id: questionId,
+      lesson_id: question.lesson_id,
       user_answer: "revealed",
-      correct: false,
+      is_correct: false,
     });
 
     await scheduleReview(userId, questionId, false);
@@ -535,8 +581,9 @@ async function handleAnswer(
   const { error: insertError } = await supabase.from("attempt").insert({
     user_id: userId,
     question_id: questionId,
+    lesson_id: question.lesson_id,
     user_answer: answer,
-    correct,
+    is_correct: correct,
   });
 
   if (insertError) {
@@ -618,11 +665,11 @@ async function handleStats(chatId: number, userId: string) {
     .eq("user_id", userId);
 
   const totalAttempts = attempts?.length || 0;
-  const correctAttempts = attempts?.filter((a) => a.correct).length || 0;
+  const correctAttempts = attempts?.filter((a) => a.is_correct).length || 0;
   const accuracy = totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : 0;
 
   const statsText = `📊 *Your Progress*\n\n` +
-    `🎯 Total XP: ${user.total_xp}\n` +
+    `🎯 Total XP: ${user.xp}\n` +
     `🔥 Current Streak: ${user.current_streak} days\n` +
     `🏆 Longest Streak: ${user.longest_streak} days\n\n` +
     `📝 Questions Answered: ${totalAttempts}\n` +

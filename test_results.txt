@@ -1,0 +1,34 @@
+🧪 DailyCommit Bot Comprehensive Test
+============================================================
+
+📡 Test 1: Checking bot API connection...
+✅ Bot connected: @MyDailyCommitBot
+   Bot ID: 8883911322
+   Name: DailyCommitBot
+
+📡 Test 2: Checking webhook configuration...
+✅ Webhook URL: https://ybblpzymovvngtllrsbn.supabase.co/functions/v1/telegram-webhook
+   Pending updates: 0
+
+💾 Test 3: Querying database for users...
+❌ Database error: {'code': '42703', 'details': None, 'hint': None, 'message': 'column app_user.name does not exist'}
+   Response status: 400
+
+💾 Test 4: Checking recent attempts...
+⚠️ Could not parse attempts: 400
+
+💾 Test 5: Checking available questions...
+✅ Found 3 question(s) in database:
+   • [mcq] What type of data structure is commonly used to store user c...
+   • [true_false] According to the passage, testers should only check the maxi...
+   • [fill_in] The passage describes ____ as a critical aspect of testing a...
+
+⚠️ Test 6: Skipped (no chat_id found)
+   Please send /start to the bot first, then run this script again.
+
+============================================================
+📊 TEST SUMMARY
+============================================================
+⚠️ No users found in database
+   Please send /start to your bot first!
+
