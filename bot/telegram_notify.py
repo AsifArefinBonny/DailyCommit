@@ -4,10 +4,10 @@ Every failure calls notify_admin() with a human-readable reason.
 """
 import os
 import requests
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 
 
-def notify_admin(service: str, status: str, reason: str, context: Optional[dict[str, Any]] = None, run_url: Optional[str] = None):
+def notify_admin(service: str, status: str, reason: str, context: Optional[Dict[str, Any]] = None, run_url: Optional[str] = None):
     """
     Send a formatted alert to the admin's Telegram.
 
@@ -53,7 +53,7 @@ def notify_admin(service: str, status: str, reason: str, context: Optional[dict[
         print(f"Alert content: {message}")
 
 
-def send_message(chat_id: int, text: str, reply_markup: Optional[dict] = None) -> bool:
+def send_message(chat_id: int, text: str, reply_markup: Optional[Dict] = None) -> bool:
     """
     Send a Telegram message with error handling.
     Returns True if successful, False otherwise.
