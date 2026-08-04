@@ -2,12 +2,19 @@
 Telegram notification helper for admin alerts.
 Every failure calls notify_admin() with a human-readable reason.
 """
+
 import os
 import requests
 from typing import Optional, Any, Dict
 
 
-def notify_admin(service: str, status: str, reason: str, context: Optional[Dict[str, Any]] = None, run_url: Optional[str] = None):
+def notify_admin(
+    service: str,
+    status: str,
+    reason: str,
+    context: Optional[Dict[str, Any]] = None,
+    run_url: Optional[str] = None,
+):
     """
     Send a formatted alert to the admin's Telegram.
 
@@ -22,7 +29,9 @@ def notify_admin(service: str, status: str, reason: str, context: Optional[Dict[
     admin_chat_id = os.getenv("TELEGRAM_ADMIN_CHAT_ID")  # Your telegram user ID
 
     if not bot_token or not admin_chat_id:
-        print(f"⚠️ Cannot send alert (missing credentials): {service} {status} - {reason}")
+        print(
+            f"⚠️ Cannot send alert (missing credentials): {service} {status} - {reason}"
+        )
         return
 
     # Format alert message
@@ -38,11 +47,7 @@ def notify_admin(service: str, status: str, reason: str, context: Optional[Dict[
 
     try:
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-        payload = {
-            "chat_id": admin_chat_id,
-            "text": message,
-            "parse_mode": "Markdown"
-        }
+        payload = {"chat_id": admin_chat_id, "text": message, "parse_mode": "Markdown"}
         response = requests.post(url, json=payload, timeout=10)
 
         if not response.ok:
@@ -65,11 +70,7 @@ def send_message(chat_id: int, text: str, reply_markup: Optional[Dict] = None) -
 
     try:
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-        payload = {
-            "chat_id": chat_id,
-            "text": text,
-            "parse_mode": "Markdown"
-        }
+        payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
         if reply_markup:
             payload["reply_markup"] = reply_markup
 
@@ -77,45 +78,61 @@ def send_message(chat_id: int, text: str, reply_markup: Optional[Dict] = None) -
 
         if response.status_code == 429:
             retry_after = response.json().get("parameters", {}).get("retry_after", 30)
-            notify_admin("Telegram Bot API", "HTTP 429",
-                       f"Rate limited (retry after {retry_after}s)",
-                       {"chat_id": chat_id})
+            notify_admin(
+                "Telegram Bot API",
+                "HTTP 429",
+                f"Rate limited (retry after {retry_after}s)",
+                {"chat_id": chat_id},
+            )
             return False
 
         elif response.status_code == 403:
-            notify_admin("Telegram Bot API", "HTTP 403",
-                       "Bot blocked by user or chat not found",
-                       {"chat_id": chat_id})
+            notify_admin(
+                "Telegram Bot API",
+                "HTTP 403",
+                "Bot blocked by user or chat not found",
+                {"chat_id": chat_id},
+            )
             return False
 
         elif response.status_code == 401:
-            notify_admin("Telegram Bot API", "HTTP 401",
-                       "Invalid bot token",
-                       {"chat_id": chat_id})
+            notify_admin(
+                "Telegram Bot API",
+                "HTTP 401",
+                "Invalid bot token",
+                {"chat_id": chat_id},
+            )
             return False
 
         elif response.status_code == 400:
-            notify_admin("Telegram Bot API", "HTTP 400",
-                       f"Bad request: {response.text[:200]}",
-                       {"chat_id": chat_id, "payload": payload})
+            notify_admin(
+                "Telegram Bot API",
+                "HTTP 400",
+                f"Bad request: {response.text[:200]}",
+                {"chat_id": chat_id, "payload": payload},
+            )
             return False
 
         elif not response.ok:
-            notify_admin("Telegram Bot API", f"HTTP {response.status_code}",
-                       response.text[:200],
-                       {"chat_id": chat_id})
+            notify_admin(
+                "Telegram Bot API",
+                f"HTTP {response.status_code}",
+                response.text[:200],
+                {"chat_id": chat_id},
+            )
             return False
 
         return True
 
     except requests.Timeout:
-        notify_admin("Telegram Bot API", "⏱️ Timeout",
-                   "Request timed out after 10s",
-                   {"chat_id": chat_id})
+        notify_admin(
+            "Telegram Bot API",
+            "⏱️ Timeout",
+            "Request timed out after 10s",
+            {"chat_id": chat_id},
+        )
         return False
 
     except Exception as e:
-        notify_admin("Telegram Bot API", "❌ Exception",
-                   str(e),
-                   {"chat_id": chat_id})
+        notify_admin("Telegram Bot API", "❌ Exception", str(e), {"chat_id": chat_id})
         return False

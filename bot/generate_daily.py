@@ -2,6 +2,7 @@
 Daily lesson generation job (GitHub Actions cron).
 Generates a read-first lesson, inserts to DB, sends to Telegram.
 """
+
 import os
 import sys
 
@@ -14,6 +15,7 @@ print("✓ Standard libraries imported", flush=True)
 
 try:
     from db import SupabaseDB
+
     print("✓ db module imported", flush=True)
 except Exception as e:
     print(f"❌ Failed to import db: {e}", flush=True)
@@ -21,6 +23,7 @@ except Exception as e:
 
 try:
     from groq_client import GroqClient
+
     print("✓ groq_client module imported", flush=True)
 except Exception as e:
     print(f"❌ Failed to import groq_client: {e}", flush=True)
@@ -28,6 +31,7 @@ except Exception as e:
 
 try:
     from models import Lesson, Question
+
     print("✓ models module imported", flush=True)
 except Exception as e:
     print(f"❌ Failed to import models: {e}", flush=True)
@@ -35,12 +39,14 @@ except Exception as e:
 
 try:
     from telegram_notify import send_message, notify_admin
+
     print("✓ telegram_notify module imported", flush=True)
 except Exception as e:
     print(f"❌ Failed to import telegram_notify: {e}", flush=True)
     raise
 
 import random
+
 print("✓ All imports successful", flush=True)
 
 
@@ -61,8 +67,12 @@ def select_topic(db: SupabaseDB, config: dict) -> dict:
     active_topics = [t for t in topics if t.get("active", True)]
 
     if not active_topics:
-        notify_admin("Daily Lesson", "⚠️ No active topics",
-                   "No topics are marked active in config/topics.yaml", {})
+        notify_admin(
+            "Daily Lesson",
+            "⚠️ No active topics",
+            "No topics are marked active in config/topics.yaml",
+            {},
+        )
         return None
 
     # Weighted random selection
@@ -70,13 +80,16 @@ def select_topic(db: SupabaseDB, config: dict) -> dict:
     selected = random.choices(active_topics, weights=weights, k=1)[0]
 
     # Sync topic to DB if needed
-    db.upsert("topic", {
-        "slug": selected["slug"],
-        "name": selected["name"],
-        "category": selected["category"],
-        "weight": selected.get("weight", 1.0),
-        "active": selected.get("active", True)
-    })
+    db.upsert(
+        "topic",
+        {
+            "slug": selected["slug"],
+            "name": selected["name"],
+            "category": selected["category"],
+            "weight": selected.get("weight", 1.0),
+            "active": selected.get("active", True),
+        },
+    )
 
     # Get topic ID from DB
     topic_row = db.select("topic", filters={"slug": selected["slug"]})
@@ -158,7 +171,9 @@ Return ONLY the JSON object. Make it engaging and career-relevant for a QA engin
     return prompt
 
 
-def save_lesson_to_db(db: SupabaseDB, lesson: Lesson, topic_id: str, lesson_date: date) -> str:
+def save_lesson_to_db(
+    db: SupabaseDB, lesson: Lesson, topic_id: str, lesson_date: date
+) -> str:
     """Save lesson and questions to database. Returns lesson_id."""
     # Insert lesson
     lesson_data = {
@@ -167,13 +182,17 @@ def save_lesson_to_db(db: SupabaseDB, lesson: Lesson, topic_id: str, lesson_date
         "title": lesson.title,
         "body": lesson.body,
         "difficulty": lesson.difficulty,
-        "source": "ai"
+        "source": "ai",
     }
     lesson_result = db.insert("lesson", lesson_data)
 
     if not lesson_result:
-        notify_admin("Daily Lesson", "❌ DB insert failed",
-                   "Failed to insert lesson into database", {"date": str(lesson_date)})
+        notify_admin(
+            "Daily Lesson",
+            "❌ DB insert failed",
+            "Failed to insert lesson into database",
+            {"date": str(lesson_date)},
+        )
         return None
 
     lesson_id = lesson_result[0]["id"]
@@ -189,7 +208,7 @@ def save_lesson_to_db(db: SupabaseDB, lesson: Lesson, topic_id: str, lesson_date
             "explanation": q.explanation,
             "concept_tag": q.concept_tag,
             "difficulty": q.difficulty,
-            "meta": q.meta
+            "meta": q.meta,
         }
         db.insert("question", question_data)
 
@@ -201,8 +220,7 @@ def send_lesson_to_telegram(db: SupabaseDB, lesson_id: str):
     # Get user
     users = db.select("app_user")
     if not users:
-        notify_admin("Daily Lesson", "⚠️ No users",
-                   "No users in app_user table", {})
+        notify_admin("Daily Lesson", "⚠️ No users", "No users in app_user table", {})
         return
 
     user = users[0]  # Single user for now
@@ -224,9 +242,12 @@ def send_lesson_to_telegram(db: SupabaseDB, lesson_id: str):
     success = send_message(chat_id, message)
 
     if not success:
-        notify_admin("Daily Lesson", "❌ Send failed",
-                   "Failed to send lesson to Telegram",
-                   {"lesson_id": lesson_id, "chat_id": chat_id})
+        notify_admin(
+            "Daily Lesson",
+            "❌ Send failed",
+            "Failed to send lesson to Telegram",
+            {"lesson_id": lesson_id, "chat_id": chat_id},
+        )
         return
 
     print(f"✓ Lesson sent to Telegram (user can use /learn to start questions)")
@@ -239,7 +260,9 @@ def main():
         # Load config
         print("📂 Loading config...", flush=True)
         config = load_config()
-        print(f"✓ Config loaded: {len(config.get('topics', []))} topics found", flush=True)
+        print(
+            f"✓ Config loaded: {len(config.get('topics', []))} topics found", flush=True
+        )
 
         # Initialize services
         print("🔌 Initializing Supabase DB...", flush=True)
@@ -251,7 +274,7 @@ def main():
             api_key=os.getenv("GROQ_API_KEY"),
             model_name=config["llm"]["model_name"],
             max_retries=config["llm"]["max_retries"],
-            timeout=config["llm"]["timeout_seconds"]
+            timeout=config["llm"]["timeout_seconds"],
         )
         print("✓ Groq client initialized", flush=True)
 
@@ -272,9 +295,12 @@ def main():
         print(f"✓ Lesson generated: {lesson.title if lesson else 'None'}", flush=True)
 
         if not lesson:
-            notify_admin("Daily Lesson", "❌ Generation failed",
-                       "LLM failed to generate valid lesson after all retries",
-                       {"topic": topic["name"]})
+            notify_admin(
+                "Daily Lesson",
+                "❌ Generation failed",
+                "LLM failed to generate valid lesson after all retries",
+                {"topic": topic["name"]},
+            )
             sys.exit(1)
 
         # Save to DB
@@ -289,14 +315,18 @@ def main():
 
     except Exception as e:
         import traceback
+
         error_details = traceback.format_exc()
         print(f"❌ ERROR: {str(e)}", file=sys.stderr)
         print(f"Traceback:\n{error_details}", file=sys.stderr)
 
-        notify_admin("Daily Lesson", "❌ Unexpected error",
-                   str(e),
-                   {"traceback": error_details[:500]},
-                   run_url=os.getenv("GITHUB_RUN_URL"))
+        notify_admin(
+            "Daily Lesson",
+            "❌ Unexpected error",
+            str(e),
+            {"traceback": error_details[:500]},
+            run_url=os.getenv("GITHUB_RUN_URL"),
+        )
         sys.exit(1)
 
 

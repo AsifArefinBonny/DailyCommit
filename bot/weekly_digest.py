@@ -2,6 +2,7 @@
 Weekly digest job (GitHub Actions cron).
 Sends a summary of the week's learning: topics covered, accuracy, journal notes.
 """
+
 import os
 from datetime import date, timedelta
 from db import SupabaseDB
@@ -32,7 +33,9 @@ def main():
         )
 
         if not lessons:
-            await send_message(chat_id, "📊 No lessons this week. Let's get back on track! 💪")
+            await send_message(
+                chat_id, "📊 No lessons this week. Let's get back on track! 💪"
+            )
             return
 
         # Get this week's attempts
@@ -65,9 +68,7 @@ def main():
         print("✅ Weekly digest sent")
 
     except Exception as e:
-        notify_admin("Weekly Digest", "❌ Failed",
-                   str(e),
-                   {"traceback": str(e)[:500]})
+        notify_admin("Weekly Digest", "❌ Failed", str(e), {"traceback": str(e)[:500]})
 
 
 if __name__ == "__main__":

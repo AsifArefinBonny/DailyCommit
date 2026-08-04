@@ -2,13 +2,23 @@
 Pydantic models for validating LLM-generated content.
 All OpenRouter responses must pass through these schemas before hitting the DB.
 """
+
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Literal
 
 
 class Question(BaseModel):
     """A single question grounded in the lesson passage."""
-    type: Literal["mcq", "true_false", "fill_in", "predict_output", "spot_the_bug", "short_answer", "scenario"]
+
+    type: Literal[
+        "mcq",
+        "true_false",
+        "fill_in",
+        "predict_output",
+        "spot_the_bug",
+        "short_answer",
+        "scenario",
+    ]
     prompt: str = Field(min_length=10)
     options: Optional[List[str]] = None  # required for MCQ, null otherwise
     correct_answer: str = Field(min_length=1)
@@ -29,6 +39,7 @@ class Question(BaseModel):
 
 class Lesson(BaseModel):
     """A complete daily lesson: passage + grounded questions."""
+
     title: str = Field(min_length=10, max_length=200)
     body: str = Field(min_length=50)  # the read-first passage
     difficulty: int = Field(ge=1, le=5, default=2)
@@ -45,10 +56,12 @@ class Lesson(BaseModel):
 
 class TutorResponse(BaseModel):
     """AI tutor follow-up response (for Explain Simply / Senior QA buttons)."""
+
     response: str = Field(min_length=20)
 
 
 class GradeShortAnswer(BaseModel):
     """Grading result for a short-answer question."""
+
     is_correct: bool
     feedback: str = Field(min_length=10)

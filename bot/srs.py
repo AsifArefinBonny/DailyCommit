@@ -1,6 +1,7 @@
 """
 SM-2 spaced repetition algorithm.
 """
+
 from datetime import date, timedelta
 from typing import Literal
 
@@ -10,7 +11,7 @@ def update_srs(
     interval_days: int,
     repetitions: int,
     result: Literal["correct", "incorrect", "unsure"],
-    confidence: Literal["guess", "unsure", "certain"]
+    confidence: Literal["guess", "unsure", "certain"],
 ) -> tuple[float, int, int]:
     """
     Update SRS parameters based on the SM-2 algorithm.
@@ -26,11 +27,9 @@ def update_srs(
         (new_ease, new_interval, new_repetitions)
     """
     # Confidence adjustment: reduce ease if guessing or unsure even when correct
-    confidence_penalty = {
-        "guess": 0.15,
-        "unsure": 0.08,
-        "certain": 0.0
-    }.get(confidence, 0.0)
+    confidence_penalty = {"guess": 0.15, "unsure": 0.08, "certain": 0.0}.get(
+        confidence, 0.0
+    )
 
     if result == "incorrect":
         # Reset repetitions, reduce ease, schedule for tomorrow
@@ -45,7 +44,12 @@ def update_srs(
     else:  # correct
         # Standard SM-2
         quality = 4  # Assume "good" response; could be tuned with finer confidence
-        new_ease = max(1.3, ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)) - confidence_penalty)
+        new_ease = max(
+            1.3,
+            ease
+            + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
+            - confidence_penalty,
+        )
 
         if repetitions == 0:
             new_interval = 1

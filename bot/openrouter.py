@@ -1,6 +1,7 @@
 """
 OpenRouter client with retries, fallback models, error classification, and alerts.
 """
+
 import os
 import time
 import requests
@@ -8,17 +9,24 @@ from typing import Optional, Type, TypeVar, List
 from pydantic import BaseModel, ValidationError
 from telegram_notify import notify_admin
 
-T = TypeVar('T', bound=BaseModel)
+T = TypeVar("T", bound=BaseModel)
 
 
 class OpenRouterError(Exception):
     """Base exception for OpenRouter errors."""
+
     pass
 
 
 class OpenRouterClient:
-    def __init__(self, api_key: str, primary_model: str, fallback_models: List[str],
-                 max_retries: int = 3, timeout: int = 30):
+    def __init__(
+        self,
+        api_key: str,
+        primary_model: str,
+        fallback_models: List[str],
+        max_retries: int = 3,
+        timeout: int = 30,
+    ):
         self.api_key = api_key
         self.primary_model = primary_model
         self.fallback_models = fallback_models
@@ -26,8 +34,9 @@ class OpenRouterClient:
         self.timeout = timeout
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
 
-    def generate(self, prompt: str, response_model: Type[T],
-                 system_prompt: Optional[str] = None) -> Optional[T]:
+    def generate(
+        self, prompt: str, response_model: Type[T], system_prompt: Optional[str] = None
+    ) -> Optional[T]:
         """
         Generate and validate LLM output.
         Returns None if all models fail (after alerting admin).
@@ -38,7 +47,9 @@ class OpenRouterClient:
         for model_id in models_to_try:
             try:
                 print(f"  → Trying model: {model_id}", flush=True)
-                result = self._try_model(model_id, prompt, response_model, system_prompt)
+                result = self._try_model(
+                    model_id, prompt, response_model, system_prompt
+                )
                 if result:
                     print(f"  ✓ Success with {model_id}", flush=True)
                     return result
@@ -54,12 +65,17 @@ class OpenRouterClient:
             service="OpenRouter",
             status="❌ All models failed",
             reason=f"Tried {len(models_to_try)} models, none succeeded",
-            context={"models": models_to_try}
+            context={"models": models_to_try},
         )
         return None
 
-    def _try_model(self, model_id: str, prompt: str, response_model: Type[T],
-                   system_prompt: Optional[str]) -> Optional[T]:
+    def _try_model(
+        self,
+        model_id: str,
+        prompt: str,
+        response_model: Type[T],
+        system_prompt: Optional[str],
+    ) -> Optional[T]:
         """Try a single model with retries."""
         messages = []
         if system_prompt:
@@ -70,7 +86,7 @@ class OpenRouterClient:
             try:
                 headers = {
                     "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
                 }
                 payload = {
                     "model": model_id,
@@ -79,10 +95,7 @@ class OpenRouterClient:
                 }
 
                 response = requests.post(
-                    self.base_url,
-                    json=payload,
-                    headers=headers,
-                    timeout=self.timeout
+                    self.base_url, json=payload, headers=headers, timeout=self.timeout
                 )
 
                 # Classify error
@@ -93,26 +106,42 @@ class OpenRouterClient:
                         time.sleep(retry_after)
                         continue
                     else:
-                        notify_admin("OpenRouter", f"HTTP {response.status_code}",
-                                   reason, {"model": model_id, "attempt": attempt + 1})
+                        notify_admin(
+                            "OpenRouter",
+                            f"HTTP {response.status_code}",
+                            reason,
+                            {"model": model_id, "attempt": attempt + 1},
+                        )
                         raise OpenRouterError(reason)
 
                 elif response.status_code == 401:
                     reason = "Invalid API key"
-                    notify_admin("OpenRouter", "❌ Auth failed", reason, {"model": model_id})
+                    notify_admin(
+                        "OpenRouter", "❌ Auth failed", reason, {"model": model_id}
+                    )
                     raise OpenRouterError(reason)
 
                 elif response.status_code >= 500:
                     reason = f"Server error (HTTP {response.status_code})"
                     if attempt < self.max_retries - 1:
-                        time.sleep(2 ** attempt)
+                        time.sleep(2**attempt)
                         continue
-                    notify_admin("OpenRouter", f"HTTP {response.status_code}", reason, {"model": model_id})
+                    notify_admin(
+                        "OpenRouter",
+                        f"HTTP {response.status_code}",
+                        reason,
+                        {"model": model_id},
+                    )
                     raise OpenRouterError(reason)
 
                 elif not response.ok:
                     reason = f"HTTP {response.status_code}: {response.text[:200]}"
-                    notify_admin("OpenRouter", f"HTTP {response.status_code}", reason, {"model": model_id})
+                    notify_admin(
+                        "OpenRouter",
+                        f"HTTP {response.status_code}",
+                        reason,
+                        {"model": model_id},
+                    )
                     raise OpenRouterError(reason)
 
                 # Parse response
@@ -123,6 +152,7 @@ class OpenRouterClient:
                 try:
                     # Attempt to parse as JSON first
                     import json
+
                     parsed = json.loads(content)
                     validated = response_model.model_validate(parsed)
                     return validated
@@ -131,8 +161,12 @@ class OpenRouterClient:
                     if attempt < self.max_retries - 1:
                         # Retry with stricter prompt
                         continue
-                    notify_admin("OpenRouter", "⚠️ Validation failed", reason,
-                               {"model": model_id, "content_preview": content[:200]})
+                    notify_admin(
+                        "OpenRouter",
+                        "⚠️ Validation failed",
+                        reason,
+                        {"model": model_id, "content_preview": content[:200]},
+                    )
                     raise OpenRouterError(reason)
 
             except requests.Timeout:
@@ -145,9 +179,11 @@ class OpenRouterClient:
             except requests.RequestException as e:
                 reason = f"Network error: {str(e)}"
                 if attempt < self.max_retries - 1:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
                     continue
-                notify_admin("OpenRouter", "❌ Network error", reason, {"model": model_id})
+                notify_admin(
+                    "OpenRouter", "❌ Network error", reason, {"model": model_id}
+                )
                 raise OpenRouterError(reason)
 
         return None

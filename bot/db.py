@@ -1,6 +1,7 @@
 """
 Supabase database client with error handling.
 """
+
 import os
 from typing import Optional, Any
 from supabase import create_client, Client
@@ -13,15 +14,23 @@ class SupabaseDB:
         key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
         if not url or not key:
-            notify_admin("Supabase", "❌ Config missing",
-                       "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set", {})
+            notify_admin(
+                "Supabase",
+                "❌ Config missing",
+                "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set",
+                {},
+            )
             raise ValueError("Missing Supabase credentials")
 
         try:
             self.client: Client = create_client(url, key)
         except Exception as e:
-            notify_admin("Supabase", "❌ Connection failed",
-                       f"Failed to create client: {str(e)}", {})
+            notify_admin(
+                "Supabase",
+                "❌ Connection failed",
+                f"Failed to create client: {str(e)}",
+                {},
+            )
             raise
 
     def execute_query(self, query_fn) -> Optional[Any]:
@@ -42,21 +51,23 @@ class SupabaseDB:
 
             # Classify error
             if "540" in error_msg or "connection refused" in error_msg.lower():
-                notify_admin("Supabase", "HTTP 540",
-                           "Supabase project paused - restore it in the dashboard",
-                           {"error": error_msg[:200]})
+                notify_admin(
+                    "Supabase",
+                    "HTTP 540",
+                    "Supabase project paused - restore it in the dashboard",
+                    {"error": error_msg[:200]},
+                )
             elif "401" in error_msg or "unauthorized" in error_msg.lower():
-                notify_admin("Supabase", "HTTP 401",
-                           "Authentication failed - check service role key",
-                           {"error": error_msg[:200]})
+                notify_admin(
+                    "Supabase",
+                    "HTTP 401",
+                    "Authentication failed - check service role key",
+                    {"error": error_msg[:200]},
+                )
             elif "RLS" in error_msg.upper() or "policy" in error_msg.lower():
-                notify_admin("Supabase", "⚠️ RLS violation",
-                           error_msg[:300],
-                           {})
+                notify_admin("Supabase", "⚠️ RLS violation", error_msg[:300], {})
             else:
-                notify_admin("Supabase", "❌ Query failed",
-                           error_msg[:300],
-                           {})
+                notify_admin("Supabase", "❌ Query failed", error_msg[:300], {})
 
             return None
 
@@ -72,8 +83,11 @@ class SupabaseDB:
             lambda: self.client.table(table).upsert(data).execute()
         )
 
-    def select(self, table: str, filters: Optional[dict] = None, columns: str = "*") -> Optional[list]:
+    def select(
+        self, table: str, filters: Optional[dict] = None, columns: str = "*"
+    ) -> Optional[list]:
         """Select rows from a table."""
+
         def query():
             q = self.client.table(table).select(columns)
             if filters:
@@ -86,6 +100,7 @@ class SupabaseDB:
 
     def update(self, table: str, data: dict, filters: dict) -> Optional[Any]:
         """Update rows in a table."""
+
         def query():
             q = self.client.table(table).update(data)
             for key, value in filters.items():
