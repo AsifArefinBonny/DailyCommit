@@ -4,7 +4,7 @@ Supabase database client with error handling.
 import os
 from typing import Optional, Any
 from supabase import create_client, Client
-from telegram_notify import notify_admin
+from bot.telegram_notify import notify_admin
 
 
 class SupabaseDB:

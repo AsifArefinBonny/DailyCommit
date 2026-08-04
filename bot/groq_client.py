@@ -7,7 +7,7 @@ import time
 import requests
 from typing import Optional, Type, TypeVar
 from pydantic import BaseModel, ValidationError
-from telegram_notify import notify_admin
+from bot.telegram_notify import notify_admin
 
 T = TypeVar('T', bound=BaseModel)
 
